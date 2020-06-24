@@ -1,16 +1,42 @@
+/* menu */ 
 
-.Rikiki{
+#conteneur{
+    display: flex; 
+    width: auto;
+}
+
+nav ul li {
+    display: inline-block;
+    margin: 20px;
+}
+
+.Rikiki
+{
     color: red;
     font-weight: bold;
     font-family: 'Roboto', sans-serif;
 }
 
-.logo{
-
+.logo
+{
+    float: left;
 }
 
-p{
-
+p
+{
     font-size: 1.3em;
     font-family: 'Roboto', sans-serif;
+}
+
+/* Apparence liens */
+a:hover
+{
+}
+
+a:visited
+{
+}
+
+a:active
+{
 }
