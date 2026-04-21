@@ -1,4 +1,4 @@
-const CACHE = 'rikiki-v5';
+const CACHE = 'rikiki-v6';
 const ASSETS = [
   './',
   './index.html',
