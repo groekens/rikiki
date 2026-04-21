@@ -1,18 +1,18 @@
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
 
 :root {
-  --bg: #0f0e17;
-  --surface: #1a1928;
-  --surface2: #24233a;
-  --surface3: #2e2d47;
-  --accent: #e8a045;
-  --accent2: #7c6af7;
-  --green: #4caf82;
-  --red: #e05c6a;
-  --text: #f0eefc;
-  --text2: #a09fc0;
-  --text3: #6a698a;
-  --border: rgba(255,255,255,0.08);
+  --bg: #f4f3f0;
+  --surface: #ffffff;
+  --surface2: #f0eff0;
+  --surface3: #e4e3e8;
+  --accent: #c87a1a;
+  --accent2: #5040c8;
+  --green: #1e7a4e;
+  --red: #c0303e;
+  --text: #1a1825;
+  --text2: #4a4860;
+  --text3: #8a88a0;
+  --border: rgba(0,0,0,0.10);
   --radius: 14px;
   --radius-sm: 8px;
 }
@@ -46,6 +46,7 @@ html, body {
   position: sticky;
   top: 0;
   z-index: 100;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
 
 .nav-btn {
@@ -64,7 +65,7 @@ html, body {
   transition: all 0.15s;
 }
 .nav-btn.active {
-  background: var(--surface3);
+  background: var(--surface2);
   color: var(--text);
 }
 .nav-btn:disabled {
@@ -144,10 +145,10 @@ input[type=number] { text-align: center; }
 }
 .btn:active { transform: scale(0.98); }
 .btn-primary {
-  background: var(--accent);
-  color: #0f0e17;
+  background: var(--text);
+  color: var(--bg);
 }
-.btn-primary:hover { background: #f0b060; }
+.btn-primary:hover { background: var(--text2); }
 .btn-secondary {
   background: var(--surface2);
   color: var(--text);
@@ -181,10 +182,10 @@ input[type=number] { text-align: center; }
   font-weight: 500;
   font-family: 'Syne', sans-serif;
 }
-.badge-green { background: rgba(76,175,130,0.15); color: var(--green); }
-.badge-red { background: rgba(224,92,106,0.15); color: var(--red); }
-.badge-amber { background: rgba(232,160,69,0.15); color: var(--accent); }
-.badge-purple { background: rgba(124,106,247,0.15); color: var(--accent2); }
+.badge-green { background: #d4f0e2; color: var(--green); }
+.badge-red { background: #fad4d8; color: var(--red); }
+.badge-amber { background: #fce8cc; color: var(--accent); }
+.badge-purple { background: #dddafc; color: var(--accent2); }
 .badge-neutral { background: var(--surface2); color: var(--text2); }
 
 /* AVATAR */
@@ -315,8 +316,8 @@ input[type=number] { text-align: center; }
 
 /* FORBIDDEN WARNING */
 .warn-box {
-  background: rgba(224,92,106,0.1);
-  border: 1px solid rgba(224,92,106,0.3);
+  background: #fad4d8;
+  border: 1px solid rgba(192,48,62,0.25);
   border-radius: var(--radius-sm);
   padding: 10px 12px;
   font-size: 13px;
