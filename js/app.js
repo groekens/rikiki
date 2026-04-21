@@ -90,6 +90,14 @@ function renderGameScreen() {
   document.getElementById('round-sub').textContent = `${r.cards} carte${r.cards > 1 ? 's' : ''}`;
   document.getElementById('round-badge').textContent = `${ri + 1} / ${total}`;
 
+  // Show "start descending" button only if still ascending and not already triggered
+  const btnDescend = document.getElementById('btn-descend');
+  if (!Game.state.descending && !Game.isAtPeak() && r.cards > 1) {
+    btnDescend.style.display = 'inline-flex';
+  } else {
+    btnDescend.style.display = 'none';
+  }
+
   // Dealer / first player info
   document.getElementById('info-dealer').textContent = players[r.dealer].name;
   document.getElementById('info-first').textContent = players[r.firstPlayer].name;
@@ -100,6 +108,16 @@ function renderGameScreen() {
   } else {
     renderResultPhase();
   }
+}
+
+function confirmDescend() {
+  const r = Game.currentRoundData();
+  if (!confirm(`Commencer la descente maintenant ? La prochaine manche sera à ${r.cards - 1} carte${r.cards - 1 > 1 ? 's' : ''}, puis 1.`)) return;
+  Game.triggerDescend();
+  document.getElementById('btn-descend').style.display = 'none';
+  document.getElementById('round-badge').textContent = `${Game.state.currentRound + 1} / ${Game.state.totalRounds}`;
+  document.getElementById('progress-fill').style.width = ((Game.state.currentRound / Game.state.totalRounds) * 100) + '%';
+  showToast('Descente amorcée — partie raccourcie ✓');
 }
 
 function backToAnnounce() {
@@ -122,7 +140,7 @@ function renderAnnouncePhase() {
   const tbody = document.getElementById('announce-tbody');
   tbody.innerHTML = '';
 
-  order.forEach((pi, orderIdx) => {
+  order.forEach((pi) => {
     const tr = document.createElement('tr');
     tr.dataset.playerIdx = pi;
     tr.innerHTML = `
@@ -138,34 +156,25 @@ function renderAnnouncePhase() {
   checkAnnounceSum();
 }
 
+function getAnnounceVal(pi) {
+  const raw = document.getElementById('ann-' + pi)?.value.trim();
+  return (raw === '' || raw === undefined) ? 0 : parseInt(raw);
+}
+
 function checkAnnounceSum() {
   const r = Game.currentRoundData();
   const order = Game.getAnnounceOrder();
   const n = order.length;
   const vals = order.map(pi => {
-    const v = parseInt(document.getElementById('ann-' + pi)?.value);
-    return isNaN(v) ? null : v;
+    const raw = document.getElementById('ann-' + pi)?.value.trim();
+    return (raw === '' || raw === undefined) ? 0 : parseInt(raw);
   });
-  const filled = vals.filter(v => v !== null);
-  const sum = filled.reduce((s, v) => s + v, 0);
+  const sum = vals.reduce((s, v) => s + (isNaN(v) ? 0 : v), 0);
   const warn = document.getElementById('warn-announce');
 
-  if (filled.length === n) {
-    if (sum === r.cards) {
-      warn.textContent = `⚠ Somme des annonces (${sum}) = nombre de plis (${r.cards}) — interdit ! Modifiez au moins une annonce.`;
-      warn.classList.add('visible');
-    } else {
-      warn.classList.remove('visible');
-    }
-  } else if (filled.length === n - 1 && filled.length > 0) {
-    const remaining = r.cards - sum;
-    const lastIdx = order[order.findIndex((pi, i) => vals[i] === null)];
-    const lastInp = document.getElementById('ann-' + lastIdx);
-    if (lastInp) {
-      const forbidden = remaining;
-      warn.textContent = `ℹ Le dernier joueur ne peut pas annoncer ${forbidden >= 0 ? forbidden : '—'}.`;
-      warn.classList.add('visible');
-    }
+  if (sum === r.cards) {
+    warn.textContent = `⚠ Somme des annonces (${sum}) = nombre de plis (${r.cards}) — interdit ! Modifiez au moins une annonce.`;
+    warn.classList.add('visible');
   } else {
     warn.classList.remove('visible');
   }
@@ -177,11 +186,11 @@ function validateAnnouncements() {
   const announced = new Array(Game.state.players.length).fill(0);
   let valid = true;
   order.forEach(pi => {
-    const v = parseInt(document.getElementById('ann-' + pi)?.value);
+    const v = getAnnounceVal(pi);
     if (isNaN(v) || v < 0 || v > r.cards) { valid = false; return; }
     announced[pi] = v;
   });
-  if (!valid) { showToast('Remplissez toutes les annonces'); return; }
+  if (!valid) { showToast('Valeurs invalides'); return; }
   const sum = announced.reduce((s, v) => s + v, 0);
   if (sum === r.cards) { showToast('Somme interdite ! Modifiez une annonce'); return; }
   Game.setAnnouncements(announced);
