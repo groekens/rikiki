@@ -46,6 +46,7 @@
         <h3>Manches</h3>
         <div id="round-preview"><span style="color:var(--text3);font-size:13px;">Ajoutez au moins 2 joueurs</span></div>
       </div>
+      <!-- round-preview now shows only summary, no sequence -->
 
       <!-- Settings inline -->
       <div class="card">
@@ -104,12 +105,6 @@
         <span style="margin-left:auto;color:var(--text3);">Dealer : <strong id="info-dealer"></strong></span>
       </div>
 
-      <!-- Suit picker -->
-      <div class="card" style="padding:12px 14px;">
-        <h3 style="margin-bottom:8px;">Atout de la manche</h3>
-        <div class="suits-row" id="suits-row"></div>
-      </div>
-
       <!-- PHASE: Announce -->
       <div id="phase-announce">
         <div class="card">
@@ -145,6 +140,7 @@
           </table>
         </div>
         <button class="btn btn-primary" onclick="validateResults()">Valider les résultats →</button>
+        <button class="btn btn-secondary" onclick="backToAnnounce()" style="margin-top:8px;">← Corriger les annonces</button>
       </div>
     </div>
   </div>
