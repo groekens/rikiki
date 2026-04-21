@@ -45,11 +45,7 @@ function updateRoundPreview() {
   if (n < 2) { el.innerHTML = '<span style="color:var(--text3);font-size:13px;">Ajoutez au moins 2 joueurs</span>'; return; }
   const maxCards = Math.floor(52 / n);
   const total = maxCards * 2 - 1;
-  const seq = [];
-  for (let i = 1; i <= maxCards; i++) seq.push(i);
-  for (let i = maxCards - 1; i >= 1; i--) seq.push(i);
-  el.innerHTML = `<p style="font-size:13px;color:var(--text2);margin-bottom:8px;">${n} joueurs · ${total} manches · max ${maxCards} cartes</p>
-  <div class="seq-wrap">${seq.map(c => `<span class="seq-pill">${c}</span>`).join('')}</div>`;
+  el.innerHTML = `<p style="font-size:14px;color:var(--text2);">${n} joueurs · <strong>${total} manches</strong> · max ${maxCards} cartes par manche</p>`;
 }
 
 function addPlayer() {
@@ -78,24 +74,6 @@ function startGame() {
   showScreen('game');
 }
 
-// ─── Suit picker ──────────────────────────────────────────────────
-const SUITS = ['♠','♥','♦','♣'];
-let selectedSuit = null;
-
-function renderSuits() {
-  const row = document.getElementById('suits-row');
-  row.innerHTML = SUITS.map(s => {
-    const isRed = s === '♥' || s === '♦';
-    const cls = selectedSuit === s ? (isRed ? 'selected-red' : 'selected-black') : '';
-    return `<span class="suit ${cls}" onclick="selectSuit('${s}')">${s}</span>`;
-  }).join('');
-}
-
-function selectSuit(s) {
-  selectedSuit = s;
-  renderSuits();
-}
-
 // ─── Game screen ──────────────────────────────────────────────────
 function renderGameScreen() {
   if (Game.state.phase === 'finished') { renderFinished(); return; }
@@ -116,16 +94,22 @@ function renderGameScreen() {
   document.getElementById('info-dealer').textContent = players[r.dealer].name;
   document.getElementById('info-first').textContent = players[r.firstPlayer].name;
 
-  // Suit picker
-  selectedSuit = null;
-  renderSuits();
-
   // Phase
   if (Game.state.phase === 'announce') {
     renderAnnouncePhase();
   } else {
     renderResultPhase();
   }
+}
+
+function backToAnnounce() {
+  // Reset announcements for current round
+  const r = Game.currentRoundData();
+  r.announcements.forEach(a => { a.announced = null; });
+  Game.state.phase = 'announce';
+  renderAnnouncePhase();
+  document.getElementById('phase-result').style.display = 'none';
+  document.getElementById('phase-announce').style.display = 'block';
 }
 
 function renderAnnouncePhase() {
@@ -233,7 +217,9 @@ function renderResultPhase() {
 function previewPoints(pi) {
   const r = Game.currentRoundData();
   const ann = r.announcements[pi].announced;
-  const v = parseInt(document.getElementById('res-' + pi)?.value);
+  const inp = document.getElementById('res-' + pi);
+  const raw = inp?.value.trim();
+  const v = (raw === '' || raw === undefined) ? 0 : parseInt(raw);
   const el = document.getElementById('pts-preview-' + pi);
   if (isNaN(v)) { el.innerHTML = '—'; return; }
   let pts;
@@ -252,13 +238,14 @@ function validateResults() {
   const r = Game.currentRoundData();
   const players = Game.state.players;
   const results = [];
-  let valid = true;
   players.forEach((_, pi) => {
-    const v = parseInt(document.getElementById('res-' + pi)?.value);
-    if (isNaN(v) || v < 0 || v > r.cards) { valid = false; return; }
+    const inp = document.getElementById('res-' + pi);
+    const raw = inp?.value.trim();
+    const v = (raw === '' || raw === undefined) ? 0 : parseInt(raw);
+    if (isNaN(v) || v < 0 || v > r.cards) { results.push(null); return; }
     results.push(v);
   });
-  if (!valid) { showToast('Remplissez tous les résultats'); return; }
+  if (results.includes(null)) { showToast('Valeurs invalides'); return; }
   const sum = results.reduce((s, v) => s + v, 0);
   if (sum !== r.cards) { showToast(`Total des plis = ${sum}, attendu ${r.cards}`); return; }
   Game.setResults(results);
