@@ -29,8 +29,29 @@ const Game = {
       phase: 'announce',
       totalRounds: seq.length,
       roundSequence: seq,
+      descending: false,
+      peakReached: false,
     };
     this.startRound(0);
+  },
+
+  // Called when user wants to start descending now (before natural peak)
+  triggerDescend() {
+    const ri = this.state.currentRound;
+    const currentCards = this.state.roundSequence[ri];
+    // Rebuild sequence: keep played rounds, then descend from current cards - 1 down to 1
+    const newSeq = [...this.state.roundSequence.slice(0, ri + 1)];
+    for (let i = currentCards - 1; i >= 1; i--) newSeq.push(i);
+    this.state.roundSequence = newSeq;
+    this.state.totalRounds = newSeq.length;
+    this.state.descending = true;
+  },
+
+  isAtPeak() {
+    const ri = this.state.currentRound;
+    const seq = this.state.roundSequence;
+    // We're at peak if current cards >= next cards (or last)
+    return ri >= seq.length - 1 || seq[ri] >= seq[ri + 1];
   },
 
   startRound(idx) {
