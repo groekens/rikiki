@@ -1,4 +1,4 @@
-const CACHE = 'rikiki-v3';
+const CACHE = 'rikiki-v4';
 const ASSETS = [
   './',
   './index.html',
@@ -6,9 +6,13 @@ const ASSETS = [
   './js/game.js',
   './js/app.js',
   './manifest.json',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
-  'https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap'
+  './images/android-chrome-192x192.png',
+  './images/android-chrome-512x512.png',
+  './images/apple-touch-icon.png',
+  './images/favicon.ico',
+  './images/favicon-16x16.png',
+  './images/favicon-32x32.png',
+  'https://fonts.googleapis.com/css2?family=Kreon:wght@400;500;600;700&family=DM+Sans:wght@300;400;500&display=swap'
 ];
 
 self.addEventListener('install', e => {
