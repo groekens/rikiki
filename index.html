@@ -1,234 +1,395 @@
 <!DOCTYPE html>
+
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Rikiki</title>
-  <meta name="description" content="Compteur de points pour le jeu de cartes Rikiki">
-  <meta name="theme-color" content="#0f0e17">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Rikiki">
-  <link rel="manifest" href="manifest.json">
-  <link rel="icon" type="image/x-icon" href="images/favicon.ico">
-  <link rel="icon" type="image/png" sizes="16x16" href="images/favicon-16x16.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32x32.png">
-  <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
-  <link rel="stylesheet" href="css/style.css">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<link rel="manifest" href="manifest.json" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<title>Dooodle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root { --safe-top: env(safe-area-inset-top, 0px); }
+  header { padding-top: calc(1rem + var(--safe-top)); }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ink: #1a1a2e; --ink-soft: #4a4a6a; --ink-muted: #9090b0;
+    --paper: #fafaf7; --surface: #ffffff;
+    --accent: #ff6b35; --accent-light: #fff0eb;
+    --green: #2d9c6e; --green-light: #e8f7f1;
+    --border: #e8e8f0; --radius: 12px; --radius-lg: 20px;
+    --font: 'Manrope', sans-serif;
+  }
+  html { font-size: 17px; }
+  body { font-family: var(--font); background: var(--paper); color: var(--ink); min-height: 100vh; display: flex; flex-direction: column; }
+
+header { padding: 1rem 1.25rem; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(–border); background: var(–surface); }
+.lang-toggle { display: flex; border: 1px solid var(–border); border-radius: 8px; overflow: hidden; flex-shrink: 0; margin-left: auto; }
+.lang-btn { padding: 5px 9px; background: none; border: none; font-family: var(–font); font-size: 0.75rem; font-weight: 600; cursor: pointer; color: var(–ink-muted); transition: background 0.12s, color 0.12s; letter-spacing: 0.03em; }
+.lang-btn:first-child { border-right: 1px solid var(–border); }
+.lang-btn.active { background: var(–ink); color: white; }
+.logo { font-family: var(–font); font-weight: 800; font-size: 1.4rem; color: var(–ink); letter-spacing: -0.5px; flex-shrink: 0; }
+.logo span { color: var(–accent); }
+.tagline { font-size: 0.82rem; color: var(–ink-muted); font-weight: 400; margin-left: 4px; padding-left: 14px; border-left: 1px solid var(–border); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 480px) {
+.tagline { display: none; }
+header { padding: 0.9rem 1rem; }
+.logo { font-size: 1.25rem; }
+}
+.lang-toggle {
+display: flex; border: 1px solid var(–border); border-radius: 8px; overflow: hidden; margin-left: auto;
+}
+.lang-btn {
+padding: 5px 11px; background: none; border: none; font-family: var(–font);
+font-size: 0.78rem; font-weight: 600; cursor: pointer; color: var(–ink-muted);
+transition: background 0.12s, color 0.12s; letter-spacing: 0.03em;
+}
+.lang-btn:first-child { border-right: 1px solid var(–border); }
+.lang-btn.active { background: var(–ink); color: white; }
+
+.hero { padding: 3rem 2rem 1.5rem; text-align: center; max-width: 580px; margin: 0 auto; }
+.hero h1 { font-family: var(–font); font-size: 2.6rem; font-weight: 700; line-height: 1.15; letter-spacing: -0.5px; margin-bottom: 0.75rem; }
+.hero h1 em { font-style: normal; color: var(–accent); }
+.hero p { font-size: 1rem; color: var(–ink-soft); font-weight: 300; line-height: 1.65; }
+
+.form-wrap { max-width: 580px; margin: 1.5rem auto 4rem; padding: 0 1.5rem; width: 100%; }
+.card { background: var(–surface); border: 1px solid var(–border); border-radius: var(–radius-lg); padding: 1.5rem 1.75rem; margin-bottom: 1rem; }
+.field-label { font-size: 0.74rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(–ink-muted); display: block; margin-bottom: 9px; }
+
+input[type=“text”] {
+width: 100%; padding: 0.8rem 1rem; border: 1.5px solid var(–border); border-radius: var(–radius);
+font-family: var(–font); font-size: 1.05rem; color: var(–ink);
+background: var(–paper); outline: none; transition: border-color 0.15s;
+}
+input[type=“text”]:focus { border-color: var(–accent); background: var(–surface); }
+
+.cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.cal-month-label { font-family: var(–font); font-size: 1rem; font-weight: 700; color: var(–ink); }
+.cal-nav-btn {
+background: none; border: 1px solid var(–border); border-radius: 8px;
+width: 32px; height: 32px; cursor: pointer; font-size: 1.1rem; color: var(–ink-soft);
+display: flex; align-items: center; justify-content: center; transition: background 0.12s, color 0.12s;
+}
+.cal-nav-btn:hover { background: var(–paper); color: var(–ink); }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.cal-day-header { text-align: center; font-size: 0.7rem; font-weight: 600; color: var(–ink-muted); padding: 4px 0 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+.cal-day {
+aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+border-radius: 8px; font-size: 0.9rem; cursor: pointer; border: 1.5px solid transparent;
+transition: background 0.1s, border-color 0.1s, color 0.1s; color: var(–ink);
+}
+.cal-day:hover:not(.empty):not(.past) { background: var(–accent-light); border-color: #ffd4c2; color: var(–accent); }
+.cal-day.past { color: var(–ink-muted); cursor: default; opacity: 0.4; }
+.cal-day.today { border-color: var(–border); font-weight: 700; }
+.cal-day.selected { background: var(–accent); color: white; border-color: var(–accent); font-weight: 600; }
+.cal-day.selected:hover { background: #e85a24; border-color: #e85a24; color: white; }
+.cal-day.empty { cursor: default; }
+
+.selected-dates-wrap { margin-top: 1.25rem; border-top: 1px solid var(–border); padding-top: 1rem; }
+.selected-dates-label { font-size: 0.74rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(–ink-muted); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.selected-count { background: var(–accent); color: white; border-radius: 999px; font-size: 0.7rem; font-weight: 600; padding: 1px 7px; }
+.chips-list { display: flex; flex-wrap: wrap; gap: 6px; min-height: 28px; }
+.date-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: var(–accent-light); border: 1px solid #ffd4c2; border-radius: 999px; font-size: 0.83rem; color: var(–accent); font-weight: 500; animation: popIn 0.12s ease; }
+@keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.chip-remove { background: none; border: none; cursor: pointer; color: var(–accent); font-size: 1rem; line-height: 1; padding: 0; opacity: 0.5; }
+.chip-remove:hover { opacity: 1; }
+.no-dates-msg { font-size: 0.85rem; color: var(–ink-muted); font-style: italic; }
+
+.btn-create { width: 100%; padding: 1rem; background: var(–accent); color: white; border: none; border-radius: var(–radius-lg); font-family: var(–font); font-size: 1.05rem; font-weight: 700; cursor: pointer; transition: background 0.15s, transform 0.1s, box-shadow 0.15s; box-shadow: 0 4px 20px rgba(255,107,53,0.25); }
+.btn-create:hover { background: #e85a24; box-shadow: 0 6px 24px rgba(255,107,53,0.35); }
+.btn-create:active { transform: scale(0.98); }
+.btn-create:disabled { background: var(–ink-muted); box-shadow: none; cursor: not-allowed; }
+.error-msg { font-size: 0.85rem; color: #c0392b; margin-top: 8px; min-height: 20px; }
+
+.loading-overlay { display: none; position: fixed; inset: 0; background: rgba(250,250,247,0.88); z-index: 100; align-items: center; justify-content: center; flex-direction: column; gap: 14px; }
+.loading-overlay.visible { display: flex; }
+.spinner { width: 34px; height: 34px; border: 3px solid var(–border); border-top-color: var(–accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-family: var(–font); font-size: 0.9rem; color: var(–ink-soft); }
+footer { margin-top: auto; padding: 1.25rem; text-align: center; font-size: 0.73rem; color: var(–ink-muted); border-top: 1px solid var(–border); }
+</style>
+
 </head>
 <body>
-<div id="app">
 
-  <!-- NAV -->
-  <nav class="nav">
-    <button class="nav-btn active" id="nav-setup" onclick="showScreen('setup')">Joueurs</button>
-    <button class="nav-btn" id="nav-game" onclick="showScreen('game'); renderGameScreen();" disabled>Manche</button>
-    <button class="nav-btn" id="nav-scores" onclick="showScreen('scores'); renderScores();" disabled>Scores</button>
-    <button class="nav-btn" id="nav-rules" onclick="showScreen('rules')">Règles</button>
-  </nav>
+<header>
+  <div class="logo">Do<span>oo</span>dle</div>
+  <span class="tagline" id="tagline"></span>
+  <div class="lang-toggle">
+    <button class="lang-btn" id="lang-fr" onclick="switchLang('fr')">FR</button>
+    <button class="lang-btn" id="lang-en" onclick="switchLang('en')">EN</button>
+  </div>
+</header>
 
-  <!-- ── SETUP SCREEN ── -->
-  <div class="screen active" id="screen-setup">
-    <div style="padding-top:8px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-        <h1>Rikiki</h1>
-        <span class="badge badge-amber" style="font-size:13px;">Nouvelle partie</span>
+<div class="hero">
+  <h1 id="hero-title"></h1>
+  <p id="hero-sub"></p>
+</div>
+
+<div class="form-wrap">
+  <div class="card">
+    <label class="field-label" id="label-event-title" for="event-title"></label>
+    <input type="text" id="event-title" maxlength="80" />
+  </div>
+
+  <div class="card">
+    <label class="field-label" id="label-dates"></label>
+    <div class="cal-nav">
+      <button class="cal-nav-btn" id="prev-month">&#8249;</button>
+      <span class="cal-month-label" id="month-label"></span>
+      <button class="cal-nav-btn" id="next-month">&#8250;</button>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <div class="selected-dates-wrap">
+      <div class="selected-dates-label">
+        <span id="label-selected"></span>
+        <span class="selected-count" id="selected-count">0</span>
       </div>
-
-      <div class="card">
-        <h3>Joueurs</h3>
-        <p style="font-size:13px;color:var(--text3);margin-bottom:12px;">Dans le sens des aiguilles d'une montre · premier = 1er dealer</p>
-        <div id="player-list"></div>
-        <div style="display:flex;gap:8px;margin-top:12px;">
-          <input type="text" id="player-input" placeholder="Nom du joueur…" style="flex:1;" maxlength="20">
-          <button class="btn-sm" onclick="addPlayer()" style="flex-shrink:0;">+ Ajouter</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <h3>Manches</h3>
-        <div id="round-preview"><span style="color:var(--text3);font-size:13px;">Ajoutez au moins 2 joueurs</span></div>
-      </div>
-      <!-- round-preview now shows only summary, no sequence -->
-
-      <!-- Settings inline -->
-      <div class="card">
-        <h3>Paramètres de score</h3>
-        <div class="setting-row">
-          <div>
-            <div class="setting-label">Points si réussite</div>
-            <div class="setting-desc">Points fixes + points par pli</div>
-          </div>
-          <div style="display:flex;gap:6px;align-items:center;">
-            <input type="number" id="set-success" min="0" max="100" value="10" style="width:60px;">
-            <span style="color:var(--text3);font-size:13px;">+</span>
-            <input type="number" id="set-trick" min="0" max="10" value="1" style="width:50px;">
-            <span style="color:var(--text3);font-size:13px;">/pli</span>
-          </div>
-        </div>
-        <div class="setting-row">
-          <div>
-            <div class="setting-label">Points si échec</div>
-            <div class="setting-desc">0 = pas de pénalité</div>
-          </div>
-          <input type="number" id="set-failure" min="-100" max="0" value="0" style="width:70px;">
-        </div>
-        <button class="btn-sm" onclick="saveSettings()" style="margin-top:10px;">Sauvegarder</button>
-      </div>
-
-      <button class="btn btn-primary" onclick="startGame()">Commencer la partie →</button>
+      <div class="chips-list" id="chips-list"></div>
     </div>
   </div>
 
-  <!-- ── GAME SCREEN ── -->
-  <div class="screen" id="screen-game">
-    <div id="finished-area" style="display:none;" class="winner-banner">
-      <div class="crown">🏆</div>
-      <div class="winner-name" id="winner-name"></div>
-      <div id="winner-pts" style="font-size:18px;color:var(--text2);font-family:'Syne',sans-serif;font-weight:600;"></div>
-      <p style="font-size:14px;color:var(--text3);margin-top:8px;">Consultez le tableau des scores</p>
-      <button class="btn btn-secondary" onclick="showScreen('scores')" style="margin-top:16px;">Voir les scores →</button>
-      <button class="btn btn-secondary" onclick="location.reload()" style="margin-top:8px;">Nouvelle partie</button>
-    </div>
+<button class="btn-create" id="btn-create"></button>
 
-    <div id="round-header-area">
-      <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+  <div class="error-msg" id="error-msg"></div>
+</div>
 
-      <div class="round-header">
-        <div>
-          <div class="round-title" id="round-title">Manche 1</div>
-          <div class="round-sub" id="round-sub"></div>
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-          <span class="badge badge-amber" id="round-badge"></span>
-          <button class="btn-sm" id="btn-descend" onclick="confirmDescend()" style="display:none;font-size:11px;">↓ Commencer la descente</button>
-        </div>
-      </div>
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loading-text"></div>
+</div>
 
-      <div class="info-row">
-        <span>🎯</span>
-        <span>Premier à parler : <strong id="info-first"></strong></span>
-        <span style="margin-left:auto;color:var(--text3);">Dealer : <strong id="info-dealer"></strong></span>
-      </div>
+<footer id="footer"></footer>
 
-      <!-- PHASE: Announce -->
-      <div id="phase-announce">
-        <div class="card">
-          <h3>Annonces</h3>
-          <table class="announce-table">
-            <thead>
-              <tr>
-                <th style="text-align:left;">Joueur</th>
-                <th>Annonce</th>
-              </tr>
-            </thead>
-            <tbody id="announce-tbody"></tbody>
-          </table>
-          <div class="warn-box" id="warn-announce"></div>
-        </div>
-        <button class="btn btn-primary" onclick="validateAnnouncements()">Valider les annonces →</button>
-      </div>
-
-      <!-- PHASE: Result -->
-      <div id="phase-result" style="display:none;">
-        <div class="card">
-          <h3>Plis réalisés</h3>
-          <table class="announce-table">
-            <thead>
-              <tr>
-                <th style="text-align:left;">Joueur</th>
-                <th>Annoncé</th>
-                <th>Réalisé</th>
-                <th>Points</th>
-              </tr>
-            </thead>
-            <tbody id="result-tbody"></tbody>
-          </table>
-        </div>
-        <button class="btn btn-primary" onclick="validateResults()">Valider les résultats →</button>
-        <button class="btn btn-secondary" onclick="backToAnnounce()" style="margin-top:8px;">← Corriger les annonces</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── SCORES SCREEN ── -->
-  <div class="screen" id="screen-scores">
-    <div style="padding-top:8px;">
-      <h2>Scores</h2>
-      <div class="metric-grid">
-        <div class="metric">
-          <div class="metric-label">Leader</div>
-          <div class="metric-value" id="score-leader-name" style="font-size:18px;">—</div>
-          <div class="metric-sub" id="score-leader-pts"></div>
-        </div>
-        <div class="metric">
-          <div class="metric-label">Manche</div>
-          <div class="metric-value" id="score-round-val">—</div>
-          <div class="metric-sub" id="score-round-sub"></div>
-        </div>
-      </div>
-      <div class="card" style="padding:12px 16px;">
-        <div class="score-wrap">
-          <table class="score-table">
-            <thead><tr id="score-thead"></tr></thead>
-            <tbody id="score-tbody"></tbody>
-          </table>
-        </div>
-      </div>
-      <button class="btn btn-secondary" onclick="showScreen('game'); renderGameScreen();" id="back-to-game-btn">← Retour à la manche</button>
-    </div>
-  </div>
-
-  <!-- ── RULES SCREEN ── -->
-  <div class="screen" id="screen-rules">
-    <div style="padding-top:8px;">
-      <h2>Règles du jeu</h2>
-
-      <div class="card">
-        <div class="rule-block">
-          <h3>🃏 But du jeu</h3>
-          <p>Annoncer <em>exactement</em> le nombre de plis que l'on va remporter. Ni plus, ni moins. On marque des points uniquement si l'annonce est respectée.</p>
-        </div>
-        <div class="rule-block">
-          <h3>🔄 Manches</h3>
-          <p>La partie monte de 1 carte jusqu'au maximum (52 ÷ nb de joueurs), puis redescend à 1. Exemple avec 4 joueurs : 1-2-3…13-12…2-1 = 25 manches.</p>
-        </div>
-        <div class="rule-block">
-          <h3>🚫 Règle des annonces</h3>
-          <p>La somme des annonces ne peut <strong>pas</strong> être égale au nombre de plis de la manche. Le dernier à annoncer est donc contraint — l'app vous le signale.</p>
-        </div>
-        <div class="rule-block">
-          <h3>🎯 Atout</h3>
-          <p>Une couleur d'atout est tirée au sort chaque manche. On doit suivre la couleur demandée si possible. L'atout prime sur toutes les autres couleurs.</p>
-        </div>
-        <div class="rule-block">
-          <h3>🏆 Points</h3>
-          <p>
-            <span class="badge badge-green" style="margin-right:6px;">Réussite</span> Points fixes + 1 pt par pli remporté<br><br>
-            <span class="badge badge-red" style="margin-right:6px;">Échec</span> 0 point (modifiable dans les paramètres)
-          </p>
-          <p style="margin-top:10px;">Exemple : annoncer 3 et réaliser 3 = 10 + 3 = <strong>13 pts</strong></p>
-        </div>
-        <div class="rule-block">
-          <h3>👥 Rotation</h3>
-          <p>À chaque manche, le dealer tourne d'un joueur dans le sens des aiguilles d'une montre. Le premier à annoncer est le joueur à gauche du dealer.</p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-</div><!-- #app -->
-
-<div class="toast" id="toast"></div>
-
-<script src="js/game.js"></script>
-<script src="js/app.js"></script>
 <script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js').catch(() => {});
-    });
+const I18N = {
+  fr: {
+    // dates locale
+    locale: 'fr-BE',
+    // index page
+    tagline: 'Trouvez la date parfaite',
+    heroTitle: 'Planifier,<br/>c\'est <em>simple.</em>',
+    heroSub: 'Créez un sondage en 30 secondes, partagez le lien, et laissez tout le monde indiquer ses disponibilités.',
+    labelEventTitle: 'Nom de l\'événement',
+    placeholderEventTitle: 'ex. Réunion d\'équipe, Apéro du vendredi…',
+    labelDates: 'Sélectionnez les dates proposées',
+    labelSelected: 'Dates sélectionnées',
+    noDatesTip: 'Cliquez sur les jours pour les ajouter',
+    btnCreate: 'Créer le sondage →',
+    errNoTitle: 'Veuillez saisir un nom pour l\'événement.',
+    errNoDates: 'Sélectionnez au moins 2 dates sur le calendrier.',
+    errCreate: 'Erreur lors de la création. Vérifiez votre connexion.',
+    loadingCreate: 'Création du sondage…',
+    footer: 'Dooodle — open source, sans compte, sans pub.',
+    // poll page
+    btnNewPoll: '+ Nouveau sondage',
+    dateProposed: (n) => `${n} date${n>1?'s':''} proposée${n>1?'s':''}`,
+    participants: (n) => `${n} participant${n>1?'s':''}`,
+    shareIntro: '<strong>Partagez ce lien</strong> avec tous les participants pour qu\'ils puissent indiquer leurs disponibilités.',
+    btnCopy: 'Copier',
+    btnCopied: '✓ Copié !',
+    btnWhatsapp: 'WhatsApp',
+    waMessage: (title, url) => `Salut ! Indique tes disponibilités pour "${title}" ici : ${url}`,
+    tabVote: 'Voter',
+    tabParticipants: 'Participants',
+    tabResults: 'Résultats',
+    labelName: 'Votre prénom',
+    placeholderName: 'ex. Marie, Thomas…',
+    calTip: 'Cliquez sur les dates en surbrillance où vous êtes disponible :',
+    btnSubmit: 'Enregistrer mes disponibilités',
+    btnSubmitting: 'Enregistrement…',
+    editHint: 'Vous pouvez modifier votre vote à tout moment en re-soumettant avec le même prénom.',
+    successVote: (name) => `✓ Disponibilités enregistrées pour ${name} !`,
+    errNoName: 'Veuillez saisir votre prénom.',
+    errSubmit: 'Erreur lors de l\'enregistrement.',
+    noParticipants: 'Aucun participant pour l\'instant.',
+    datesAvail: (n) => `${n} date${n>1?'s':''} dispo`,
+    noVotes: 'Aucun vote pour l\'instant.<br/>Partagez le lien pour inviter des participants !',
+    voted: (n) => `${n} participant${n>1?'s':''} ont voté`,
+    nobody: 'Personne de disponible',
+    loadingPoll: 'Chargement du sondage…',
+    errNotFound: 'Sondage introuvable',
+    errNotFoundSub: 'Ce lien est invalide ou le sondage a été supprimé.',
+    dayHeaders: ['Lu','Ma','Me','Je','Ve','Sa','Di'],
+  },
+  en: {
+    locale: 'en-GB',
+    tagline: 'Find the perfect date',
+    heroTitle: 'Scheduling,<br/>made <em>simple.</em>',
+    heroSub: 'Create a poll in 30 seconds, share the link, and let everyone mark their availability.',
+    labelEventTitle: 'Event name',
+    placeholderEventTitle: 'e.g. Team meeting, Friday drinks…',
+    labelDates: 'Select proposed dates',
+    labelSelected: 'Selected dates',
+    noDatesTip: 'Click on days to add them',
+    btnCreate: 'Create poll →',
+    errNoTitle: 'Please enter a name for the event.',
+    errNoDates: 'Select at least 2 dates on the calendar.',
+    errCreate: 'Error creating poll. Check your connection.',
+    loadingCreate: 'Creating poll…',
+    footer: 'Dooodle — open source, no account, no ads.',
+    btnNewPoll: '+ New poll',
+    dateProposed: (n) => `${n} date${n>1?'s':''} proposed`,
+    participants: (n) => `${n} participant${n>1?'s':''}`,
+    shareIntro: '<strong>Share this link</strong> with all participants so they can mark their availability.',
+    btnCopy: 'Copy',
+    btnCopied: '✓ Copied!',
+    btnWhatsapp: 'WhatsApp',
+    waMessage: (title, url) => `Hey! Please mark your availability for "${title}" here: ${url}`,
+    tabVote: 'Vote',
+    tabParticipants: 'Participants',
+    tabResults: 'Results',
+    labelName: 'Your name',
+    placeholderName: 'e.g. Marie, Thomas…',
+    calTip: 'Click the highlighted dates when you are available:',
+    btnSubmit: 'Save my availability',
+    btnSubmitting: 'Saving…',
+    editHint: 'You can update your vote at any time by resubmitting with the same name.',
+    successVote: (name) => `✓ Availability saved for ${name}!`,
+    errNoName: 'Please enter your name.',
+    errSubmit: 'Error saving availability.',
+    noParticipants: 'No participants yet.',
+    datesAvail: (n) => `${n} date${n>1?'s':''} available`,
+    noVotes: 'No votes yet.<br/>Share the link to invite participants!',
+    voted: (n) => `${n} participant${n>1?'s':''} voted`,
+    nobody: 'Nobody available',
+    loadingPoll: 'Loading poll…',
+    errNotFound: 'Poll not found',
+    errNotFoundSub: 'This link is invalid or the poll has been deleted.',
+    dayHeaders: ['Mo','Tu','We','Th','Fr','Sa','Su'],
   }
+};
+
+function getLang() {
+  return localStorage.getItem('dooodle-lang') || 'fr';
+}
+function setLang(l) {
+  localStorage.setItem('dooodle-lang', l);
+}
+function t() {
+  return I18N[getLang()];
+}
+
 </script>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<script>
+  firebase.initializeApp({
+    apiKey: "AIzaSyBFubNBtvGXJDG7TubBJ-REiaqaTSUFMX0",
+    authDomain: "dooodle-363fd.firebaseapp.com",
+    projectId: "dooodle-363fd",
+    storageBucket: "dooodle-363fd.firebasestorage.app",
+    messagingSenderId: "325060168942",
+    appId: "1:325060168942:web:5731f4ae9bdd975eb177ff"
+  });
+  const db = firebase.firestore();
+
+  const selectedDates = new Set();
+  const today = new Date(); today.setHours(0,0,0,0);
+  let viewYear = today.getFullYear(), viewMonth = today.getMonth();
+
+  function toKey(y,m,d) { return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
+  function formatKey(key) {
+    return cap(new Date(key+'T12:00:00').toLocaleDateString(t().locale,{weekday:'short',day:'numeric',month:'short'}));
+  }
+  function cap(s) { return s.charAt(0).toUpperCase()+s.slice(1); }
+  function toSlug(title) {
+    return title.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .toLowerCase().trim().replace(/[^a-z0-9\s-]/g,'').replace(/\s+/g,'-').replace(/-+/g,'-').slice(0,50);
+  }
+
+  function applyTranslations() {
+    const lang = getLang();
+    document.documentElement.lang = lang;
+    document.getElementById('lang-fr').classList.toggle('active', lang==='fr');
+    document.getElementById('lang-en').classList.toggle('active', lang==='en');
+    document.getElementById('tagline').textContent = t().tagline;
+    document.getElementById('hero-title').innerHTML = t().heroTitle;
+    document.getElementById('hero-sub').textContent = t().heroSub;
+    document.getElementById('label-event-title').textContent = t().labelEventTitle;
+    document.getElementById('event-title').placeholder = t().placeholderEventTitle;
+    document.getElementById('label-dates').textContent = t().labelDates;
+    document.getElementById('label-selected').textContent = t().labelSelected;
+    document.getElementById('btn-create').textContent = t().btnCreate;
+    document.getElementById('loading-text').textContent = t().loadingCreate;
+    document.getElementById('footer').textContent = t().footer;
+    renderCalendar();
+    renderChips();
+  }
+
+  window.switchLang = function(lang) {
+    setLang(lang);
+    applyTranslations();
+  };
+
+  function renderCalendar() {
+    const label = document.getElementById('month-label');
+    const grid  = document.getElementById('cal-grid');
+    label.textContent = cap(new Date(viewYear,viewMonth,1).toLocaleDateString(t().locale,{month:'long',year:'numeric'}));
+    grid.innerHTML = '';
+    t().dayHeaders.forEach(h => { const el=document.createElement('div'); el.className='cal-day-header'; el.textContent=h; grid.appendChild(el); });
+    let startDow = new Date(viewYear,viewMonth,1).getDay();
+    startDow = (startDow+6)%7;
+    for(let i=0;i<startDow;i++){const el=document.createElement('div');el.className='cal-day empty';grid.appendChild(el);}
+    const dim = new Date(viewYear,viewMonth+1,0).getDate();
+    for(let day=1;day<=dim;day++){
+      const key=toKey(viewYear,viewMonth,day);
+      const date=new Date(key+'T12:00:00');
+      const isPast=date<today, isToday=date.getTime()===today.getTime(), isSel=selectedDates.has(key);
+      const el=document.createElement('div');
+      el.className='cal-day'+(isPast?' past':'')+(isToday?' today':'')+(isSel?' selected':'');
+      el.textContent=day;
+      if(!isPast) el.addEventListener('click',()=>toggleDate(key));
+      grid.appendChild(el);
+    }
+  }
+
+  function toggleDate(key) {
+    if(selectedDates.has(key)) selectedDates.delete(key); else selectedDates.add(key);
+    renderCalendar(); renderChips();
+  }
+
+  function renderChips() {
+    const list=document.getElementById('chips-list');
+    document.getElementById('selected-count').textContent=selectedDates.size;
+    if(selectedDates.size===0){list.innerHTML=`<span class="no-dates-msg">${t().noDatesTip}</span>`;return;}
+    list.innerHTML=Array.from(selectedDates).sort().map(k=>`<div class="date-chip">${formatKey(k)}<button class="chip-remove" data-key="${k}">×</button></div>`).join('');
+    list.querySelectorAll('.chip-remove').forEach(btn=>btn.addEventListener('click',()=>toggleDate(btn.dataset.key)));
+  }
+
+  document.getElementById('prev-month').addEventListener('click',()=>{viewMonth--;if(viewMonth<0){viewMonth=11;viewYear--;}renderCalendar();});
+  document.getElementById('next-month').addEventListener('click',()=>{viewMonth++;if(viewMonth>11){viewMonth=0;viewYear++;}renderCalendar();});
+
+  document.getElementById('btn-create').addEventListener('click', async()=>{
+    const title=document.getElementById('event-title').value.trim();
+    const errEl=document.getElementById('error-msg');
+    errEl.textContent='';
+    if(!title){errEl.textContent=t().errNoTitle;return;}
+    if(selectedDates.size<2){errEl.textContent=t().errNoDates;return;}
+    document.getElementById('loading').classList.add('visible');
+    document.getElementById('btn-create').disabled=true;
+    try {
+      const baseSlug=toSlug(title);
+      const existing=await db.collection('polls').where('slug','==',baseSlug).limit(1).get();
+      const slug=existing.empty?baseSlug:baseSlug+'-'+Math.random().toString(36).slice(2,6);
+      await db.collection('polls').doc(slug).set({slug,title,dates:Array.from(selectedDates).sort(),votes:{},createdAt:new Date().toISOString()});
+      window.location.href='poll.html?id='+slug;
+    } catch(e) {
+      console.error(e);
+      document.getElementById('loading').classList.remove('visible');
+      document.getElementById('btn-create').disabled=false;
+      document.getElementById('error-msg').textContent=t().errCreate;
+    }
+  });
+
+  applyTranslations();
+</script>
+
 </body>
 </html>
