@@ -82,9 +82,6 @@ function renderGameScreen() {
   const total = Game.state.totalRounds;
   const players = Game.state.players;
 
-  // Progress
-  document.getElementById('progress-fill').style.width = ((ri / total) * 100) + '%';
-
   // Round header
   document.getElementById('round-title').textContent = `Manche ${ri + 1}`;
   document.getElementById('round-sub').textContent = `${r.cards} carte${r.cards > 1 ? 's' : ''}`;
@@ -116,7 +113,6 @@ function confirmDescend() {
   Game.triggerDescend();
   document.getElementById('btn-descend').style.display = 'none';
   document.getElementById('round-badge').textContent = `${Game.state.currentRound + 1} / ${Game.state.totalRounds}`;
-  document.getElementById('progress-fill').style.width = ((Game.state.currentRound / Game.state.totalRounds) * 100) + '%';
   showToast('Descente amorcée — partie raccourcie ✓');
 }
 
