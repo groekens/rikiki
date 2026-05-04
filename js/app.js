@@ -146,7 +146,7 @@ function renderAnnouncePhase() {
           <span>${players[pi].name}</span>
         </div>
       </td>
-      <td><input type="number" min="0" max="${r.cards}" id="ann-${pi}" placeholder="0" oninput="checkAnnounceSum()"></td>`;
+      <td><input type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="${r.cards}" id="ann-${pi}" placeholder="0" oninput="checkAnnounceSum()"></td>`;
     tbody.appendChild(tr);
   });
   checkAnnounceSum();
@@ -213,7 +213,7 @@ function renderResultPhase() {
         </div>
       </td>
       <td><span class="badge badge-neutral">${ann}</span></td>
-      <td><input type="number" min="0" max="${r.cards}" id="res-${pi}" placeholder="0" oninput="previewPoints(${pi})"></td>
+      <td><input type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="${r.cards}" id="res-${pi}" placeholder="0" oninput="previewPoints(${pi})"></td>
       <td id="pts-preview-${pi}" style="font-size:13px;color:var(--text3);">—</td>`;
     tbody.appendChild(tr);
   });
