@@ -1,10 +1,11 @@
-const CACHE = 'rikiki-v7';
+const CACHE = 'rikiki-v9';
 const ASSETS = [
   './',
   './index.html',
   './css/style.css',
   './js/game.js',
   './js/app.js',
+  './js/firebase.js',
   './manifest.json',
   './images/android-chrome-192x192.png',
   './images/android-chrome-512x512.png',
