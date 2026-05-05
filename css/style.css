@@ -160,6 +160,12 @@ input[type=number] { text-align: center; }
   color: var(--text);
   border: 1px solid var(--border);
 }
+.btn-end {
+  background: transparent;
+  color: var(--red);
+  border: 1px solid rgba(192,48,62,0.3);
+}
+.btn-end:hover { background: #fad4d8; }
 .btn-sm {
   display: inline-flex;
   align-items: center;
@@ -434,3 +440,33 @@ input[type=number] { text-align: center; }
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 4px; }
+
+/* COMPTE */
+.google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 280px;
+  margin: 0 auto;
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-family: 'Kreon', serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  transition: all 0.15s;
+}
+.google-btn:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+
+.historique-empty {
+  text-align: center;
+  padding: 32px 20px;
+  color: var(--text3);
+  font-size: 13px;
+}
