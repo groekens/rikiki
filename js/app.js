@@ -1,5 +1,5 @@
 // ─── Screen routing ───────────────────────────────────────────────
-const SCREENS = ['setup', 'game', 'scores', 'rules'];
+const SCREENS = ['setup', 'game', 'scores', 'rules', 'compte'];
 let activeScreen = 'setup';
 
 function showScreen(id) {
@@ -70,6 +70,7 @@ function startGame() {
   Game.init([...setupPlayers]);
   document.getElementById('nav-game').disabled = false;
   document.getElementById('nav-scores').disabled = false;
+  document.getElementById('btn-end-setup').style.display = 'block';
   renderGameScreen();
   showScreen('game');
 }
@@ -275,43 +276,62 @@ function renderFinished() {
   document.getElementById('winner-pts').textContent = winner.total + ' pts';
   renderScores();
   showScreen('scores');
+  // Auto-save if logged in
+  saveGameToFirebase();
 }
 
-// ─── Scores screen ────────────────────────────────────────────────
+function confirmEndGame() {
+  if (!confirm('Terminer la partie ? Les scores ne seront pas sauvegardés.')) return;
+  location.reload();
+}
+
+// ─── Compte screen ────────────────────────────────────────────────
+function renderCompte() {
+  // Auth state is managed by firebase.js via onAuthStateChanged
+  // Just reload historique if logged in
+  if (window.currentUser && window.loadHistorique) window.loadHistorique();
+}
+
+// ─── Save game to Firebase ─────────────────────────────────────────
+async function saveGameToFirebase() {
+  if (!window.savePartie) return;
+  const state = Game.state;
+  const sorted = Game.getSortedPlayers();
+  const result = await window.savePartie({
+    joueurs: sorted.map(p => p.name),
+    scores: sorted.map(p => p.total),
+    gagnant: sorted[0].name,
+    manches: state.totalRounds,
+    parametres: { ...Game.settings },
+  });
+  if (result) showToast('Partie sauvegardée ✓');
+}
 function renderScores() {
   const state = Game.state;
   if (!state.players.length) return;
 
-  const sorted = Game.getSortedPlayers();
-  const leader = sorted[0];
-
-  document.getElementById('score-leader-name').textContent = leader.name;
-  document.getElementById('score-leader-pts').textContent = leader.total;
-  document.getElementById('score-round-val').textContent =
-    state.phase === 'finished' ? 'Fin !' : `${state.currentRound + 1} / ${state.totalRounds}`;
-  document.getElementById('score-round-sub').textContent =
-    state.phase === 'finished' ? 'Partie terminée' :
-    `${state.roundSequence[state.currentRound]} cartes`;
+  const cols = state.currentRound + (state.phase !== 'announce' ? 0 : 0);
+  const completedRounds = state.phase === 'announce' ? state.currentRound : state.currentRound;
 
   const thead = document.getElementById('score-thead');
   const tbody = document.getElementById('score-tbody');
 
-  const cols = Math.min(state.currentRound + (state.phase === 'announce' ? 0 : 1), state.currentRound);
   let headRow = '<th>Joueur</th>';
-  for (let m = 0; m < cols; m++) {
+  for (let m = 0; m < completedRounds; m++) {
     headRow += `<th>M${m + 1}</th>`;
   }
   headRow += '<th>Total</th>';
   thead.innerHTML = headRow;
 
+  const sorted = Game.getSortedPlayers();
   tbody.innerHTML = '';
   sorted.forEach((p, rank) => {
     const tr = document.createElement('tr');
     if (rank === 0) tr.classList.add('leader');
     let row = `<td><div style="display:flex;align-items:center;gap:8px;">
       <div class="avatar" style="width:24px;height:24px;font-size:10px;">${p.name[0].toUpperCase()}</div>
-      ${p.name}</div></td>`;
-    for (let m = 0; m < cols; m++) {
+      ${rank === 0 ? `<strong>${p.name}</strong>` : p.name}</div></td>`;
+    for (let m = 0; m < completedRounds; m++) {
       const pts = p.scores[m];
       if (pts === undefined || pts === null) { row += '<td>—</td>'; continue; }
       const r = state.rounds[m];
@@ -319,7 +339,7 @@ function renderScores() {
       const ok = ann && ann.announced === ann.got;
       row += `<td><span class="badge ${ok ? 'badge-green' : 'badge-red'}" style="font-size:11px;">${pts > 0 ? '+' : ''}${pts}</span></td>`;
     }
-    row += `<td style="font-family:'Syne',sans-serif;font-weight:700;font-size:16px;">${p.total}</td>`;
+    row += `<td style="font-family:'Kreon',serif;font-weight:700;font-size:16px;">${p.total}</td>`;
     tr.innerHTML = row;
     tbody.appendChild(tr);
   });
