@@ -281,8 +281,32 @@ function renderFinished() {
 }
 
 function confirmEndGame() {
-  if (!confirm('Terminer la partie ? Les scores ne seront pas sauvegardés.')) return;
-  location.reload();
+  if (!confirm('Terminer la partie ? Les scores non sauvegardés seront perdus.')) return;
+  resetGame();
+}
+
+function resetGame() {
+  // Reset game state
+  setupPlayers = [];
+  Game.state = {
+    players: [], rounds: [], currentRound: 0,
+    phase: 'setup', totalRounds: 0, roundSequence: [],
+    descending: false, peakReached: false,
+  };
+  // Reset UI
+  document.getElementById('nav-game').disabled = true;
+  document.getElementById('nav-scores').disabled = true;
+  document.getElementById('btn-end-setup').style.display = 'none';
+  // Reset game screen
+  document.getElementById('finished-area').style.display = 'none';
+  document.getElementById('round-header-area').style.display = 'block';
+  document.getElementById('phase-announce').style.display = 'block';
+  document.getElementById('phase-result').style.display = 'none';
+  // Reset settings display
+  renderSettings();
+  renderSetup();
+  showScreen('setup');
+  showToast('Partie terminée');
 }
 
 // ─── Compte screen ────────────────────────────────────────────────
