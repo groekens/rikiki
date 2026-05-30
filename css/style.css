@@ -470,3 +470,13 @@ input[type=number] { text-align: center; }
   color: var(--text3);
   font-size: 13px;
 }
+
+footer {
+  text-align: center;
+  padding: 16px;
+  font-size: 0.72rem;
+  color: var(--text3);
+}
+.powered-by { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; color: var(--text3); transition: opacity 0.15s; }
+.powered-by:hover { opacity: 0.6; }
+.powered-by img { height: 15px; width: auto; display: block; opacity: 0.65; }

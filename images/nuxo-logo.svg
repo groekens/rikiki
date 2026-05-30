@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 158 44">
+  <defs>
+    <radialGradient id="dot" cx="38%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#f5854a"/>
+      <stop offset="100%" stop-color="#e33018"/>
+    </radialGradient>
+  </defs>
+  <rect x="2.5" y="2.5" width="56" height="39" rx="19.5" fill="none" stroke="#0d1b2e" stroke-width="4"/>
+  <circle cx="31" cy="22" r="11.5" fill="url(#dot)"/>
+  <text x="67" y="33" font-family="Manrope, Arial Black, sans-serif" font-weight="800" font-size="27" fill="#0d1b2e">NUXO</text>
+</svg>
