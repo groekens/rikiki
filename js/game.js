@@ -7,12 +7,25 @@ const Game = {
   },
 
   state: {
+    id: null,
     players: [],       // [{name, scores:[]}]
     rounds: [],        // [{cards, dealer, firstPlayer, announcements:[{announced,got}]}]
     currentRound: 0,
     phase: 'setup',    // setup | announce | result | finished
     totalRounds: 0,
     roundSequence: [], // [1,2,3,...,max,...,3,2,1]
+  },
+
+  // Called after every state mutation so the app can persist it.
+  onChange: null,
+  _touch() {
+    if (typeof this.onChange === 'function') {
+      try { this.onChange(); } catch (e) { console.error('Sauvegarde locale échouée', e); }
+    }
+  },
+
+  newId() {
+    return 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   },
 
   init(playerNames) {
@@ -23,6 +36,8 @@ const Game = {
     for (let i = maxCards - 1; i >= 1; i--) seq.push(i);
 
     this.state = {
+      id: this.newId(),
+      startedAt: Date.now(),
       players: playerNames.map(name => ({ name, scores: [] })),
       rounds: [],
       currentRound: 0,
@@ -35,6 +50,10 @@ const Game = {
     this.startRound(0);
   },
 
+  hasActiveGame() {
+    return this.state.players.length > 0 && this.state.phase !== 'setup';
+  },
+
   // Called when user wants to start descending now (before natural peak)
   triggerDescend() {
     const ri = this.state.currentRound;
@@ -45,6 +64,7 @@ const Game = {
     this.state.roundSequence = newSeq;
     this.state.totalRounds = newSeq.length;
     this.state.descending = true;
+    this._touch();
   },
 
   isAtPeak() {
@@ -66,6 +86,7 @@ const Game = {
     };
     this.state.currentRound = idx;
     this.state.phase = 'announce';
+    this._touch();
   },
 
   getAnnounceOrder() {
@@ -87,6 +108,7 @@ const Game = {
     const r = this.currentRoundData();
     announcements.forEach((a, i) => { r.announcements[i].announced = a; });
     this.state.phase = 'result';
+    this._touch();
   },
 
   setResults(results) {
@@ -96,6 +118,8 @@ const Game = {
     this.computeScores(this.state.currentRound);
     if (this.state.currentRound + 1 >= this.state.totalRounds) {
       this.state.phase = 'finished';
+      this.state.finishedAt = Date.now();
+      this._touch();
     } else {
       this.startRound(this.state.currentRound + 1);
     }
@@ -112,6 +136,48 @@ const Game = {
       }
       this.state.players[i].scores[roundIdx] = pts;
     });
+  },
+
+  // ─── Editing a past round ───────────────────────────────────────
+  // Number of rounds whose results are locked in. In `finished` the last
+  // round is played too, so currentRound alone would miss it.
+  completedRounds() {
+    return this.state.phase === 'finished' ? this.state.totalRounds : this.state.currentRound;
+  },
+
+  isRoundEditable(idx) {
+    return Number.isInteger(idx) && idx >= 0 && idx < this.completedRounds();
+  },
+
+  // Returns an error message, or null when the round is valid.
+  checkRoundInput(idx, announced, got) {
+    const r = this.state.rounds[idx];
+    if (!r) return 'Manche introuvable';
+    const n = this.state.players.length;
+    if (announced.length !== n || got.length !== n) return 'Données incomplètes';
+    for (const v of announced.concat(got)) {
+      if (!Number.isInteger(v) || v < 0 || v > r.cards) {
+        return `Chaque valeur doit être un nombre entre 0 et ${r.cards}`;
+      }
+    }
+    if (announced.reduce((s, v) => s + v, 0) === r.cards) {
+      return `Somme des annonces = ${r.cards} plis, interdit. Modifiez au moins une annonce.`;
+    }
+    const sumGot = got.reduce((s, v) => s + v, 0);
+    if (sumGot !== r.cards) {
+      return `Total des plis réalisés = ${sumGot}, attendu ${r.cards}.`;
+    }
+    return null;
+  },
+
+  updateRound(idx, announced, got) {
+    const err = this.checkRoundInput(idx, announced, got);
+    if (err) return err;
+    const r = this.state.rounds[idx];
+    r.announcements.forEach((a, i) => { a.announced = announced[i]; a.got = got[i]; });
+    this.computeScores(idx);
+    this._touch();
+    return null;
   },
 
   getTotal(playerIdx) {
@@ -134,5 +200,36 @@ const Game = {
     const r = this.currentRoundData();
     const sum = currentAnnouncements.reduce((s, v) => s + (v ?? 0), 0);
     return r.cards - sum;
+  },
+
+  // ─── Persistence ────────────────────────────────────────────────
+  serialize() {
+    return {
+      v: 1,
+      settings: { ...this.settings },
+      state: this.state,
+      savedAt: Date.now(),
+    };
+  },
+
+  restore(data) {
+    const st = data && data.state;
+    if (!st || !Array.isArray(st.players) || st.players.length < 2) return false;
+    if (!Array.isArray(st.rounds) || !Array.isArray(st.roundSequence)) return false;
+    if (data.settings) this.settings = { ...this.settings, ...data.settings };
+    this.state = st;
+    if (!this.state.id) this.state.id = this.newId();
+    return true;
+  },
+
+  // Short human summary used by the resume banner and the history list.
+  describe() {
+    const st = this.state;
+    const done = this.completedRounds();
+    return {
+      players: st.players.map(p => p.name).join(', '),
+      progress: `Manche ${Math.min(done + 1, st.totalRounds)} / ${st.totalRounds}`,
+      finished: st.phase === 'finished',
+    };
   },
 };

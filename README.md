@@ -10,11 +10,40 @@ Application PWA pour compter les points au jeu de cartes Rikiki.
 - Suivi des plis réalisés et calcul automatique des points
 - Tableau des scores en direct
 - Rotation automatique du dealer et du premier à parler
-- Sélecteur d'atout par manche
 - Règles du jeu intégrées
 - Paramètres de score personnalisables
+- **Pause et reprise** : la partie est sauvegardée en continu dans le navigateur.
+  Fermer l'app, la recharger ou la faire planter ne perd plus rien.
+- **Correction d'une manche passée** : touchez une case du tableau des scores
+  (ou "Corriger une manche précédente") pour rectifier annonces et plis. Les
+  points sont recalculés, les règles du jeu restent contrôlées.
+- **Vue paysage tablette** : à partir de 840 px en paysage, l'écran se scinde,
+  saisie de la manche à gauche et scores à droite.
+- **Compte Google** : historique des parties terminées et reprise des parties
+  en cours depuis un autre appareil.
 - Mode hors-ligne (Service Worker)
 - Installable sur mobile (PWA)
+
+## Configuration Firebase requise
+
+La connexion Google échoue avec `auth/unauthorized-domain` tant que le domaine
+public n'est pas déclaré.
+
+1. **Domaines autorisés** : Firebase Console → Authentication → Settings →
+   Authorized domains → ajouter `rikiki.nuxo.be`.
+   (`localhost` y est déjà, ce qui permet de tester en local.)
+2. **Règles Firestore** : coller le contenu de `firestore.rules` dans
+   Firestore Database → Rules → Publish.
+
+## Stockage
+
+| Où | Quoi | Quand |
+|----|------|-------|
+| `localStorage` | Partie en cours + paramètres de score | À chaque action |
+| Firestore | Une fiche par partie (`users/{uid}/parties/{gameId}`) | À chaque fin de manche, si connecté |
+
+L'état complet est sérialisé dans le champ `etatJson`, ce qui permet de
+reprendre une partie exactement là où elle s'est arrêtée.
 
 ## Déploiement sur GitHub Pages
 

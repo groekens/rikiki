@@ -1,0 +1,12 @@
+rules_version = '2';
+
+// Chaque utilisateur ne voit et n'écrit que ses propres parties.
+// À coller dans Firebase Console → Firestore Database → Rules → Publish.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/parties/{partieId} {
+      allow read, write, delete: if request.auth != null
+                                 && request.auth.uid == userId;
+    }
+  }
+}

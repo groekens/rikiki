@@ -80,8 +80,40 @@ html, body {
 }
 
 /* SCREENS */
+.screens-wrap { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .screen { display: none; flex: 1; padding: 20px 16px 40px; overflow-y: auto; }
 .screen.active { display: block; }
+
+/* ── SPLIT VIEW (landscape tablet / desktop) ──────────────────────
+   Encoding panel on the left, live scoreboard on the right. */
+@media (min-width: 840px) {
+  body.split #app { max-width: 1200px; }
+  body.split .screens-wrap {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    gap: 0;
+    align-items: stretch;
+    min-height: 0;
+  }
+  body.split .screen.active {
+    display: block;
+    max-height: calc(100dvh - 60px);
+    overflow-y: auto;
+    padding: 20px 20px 40px;
+  }
+  body.split #screen-scores { border-left: 1px solid var(--border); }
+  /* Redundant when both panels are already visible side by side: the
+     scoreboard on the right is itself the way to correct a round. */
+  body.split #back-to-game-btn,
+  body.split #btn-end-scores,
+  body.split #btn-fix-round,
+  body.split #score-hint { display: none !important; }
+  /* Vertical space is the scarce resource on a landscape tablet. */
+  body.split .btn-row { flex-direction: row; }
+  body.split .btn-row .btn { padding: 11px; font-size: 14px; }
+  body.split .score-wrap { margin: 0; padding: 0; }
+  body.split #screen-scores h2 { position: sticky; top: 0; background: var(--bg); padding-bottom: 8px; z-index: 2; }
+}
 
 /* TYPOGRAPHY */
 h1 {
@@ -184,6 +216,15 @@ input[type=number] { text-align: center; }
 .btn-sm:hover { border-color: var(--accent2); color: var(--text); }
 .btn-sm.danger:hover { border-color: var(--red); color: var(--red); }
 
+/* Stacked on phones, side by side once there is room (see split view).
+   flex:1 is what neutralises the width:100% that .btn carries; without it a
+   flex item keeps asking for the full container width and overflows. */
+.btn-row { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.btn-row .btn { flex: 1; min-width: 0; }
+/* Always on one line, whatever the viewport. */
+.btn-row-inline { flex-direction: row; margin-top: 14px; }
+.btn-row-inline .btn { padding: 12px; font-size: 14px; }
+
 /* BADGE */
 .badge {
   display: inline-flex;
@@ -252,8 +293,8 @@ input[type=number] { text-align: center; }
 }
 
 /* SCORE TABLE */
-.score-wrap { overflow-x: auto; margin: 0 -16px; padding: 0 16px; }
-.score-table { width: 100%; border-collapse: collapse; min-width: 280px; }
+.score-wrap { overflow-x: auto; }
+.score-table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 280px; }
 .score-table th {
   font-family: 'Kreon', serif;
   font-size: 10px;
@@ -277,7 +318,75 @@ input[type=number] { text-align: center; }
   font-weight: 500;
   font-size: 14px;
 }
+
+/* A game runs 25 to 51 rounds, so the table always scrolls sideways. Pinning
+   the name and the total keeps the only two columns that matter on screen. */
+.score-table th:first-child, .score-table td:first-child,
+.score-table th:last-child, .score-table td:last-child {
+  position: sticky;
+  z-index: 2;
+  background: var(--surface);
+}
+.score-table th:first-child, .score-table td:first-child {
+  left: 0;
+  box-shadow: inset -1px 0 0 var(--border);
+}
+.score-table th:last-child, .score-table td:last-child {
+  right: 0;
+  box-shadow: inset 1px 0 0 var(--border);
+}
+.score-table th { background: var(--surface); }
+.score-table .round-cell { min-width: 48px; }
 .score-table tr.leader td:first-child { color: var(--accent); }
+.score-table th.editable, .score-table td.editable { cursor: pointer; transition: background 0.15s; }
+.score-table th.editable:hover, .score-table td.editable:hover { background: var(--surface2); }
+.score-table th.editable { text-decoration: underline dotted; text-underline-offset: 3px; }
+.score-hint { font-size: 12px; color: var(--text3); margin-top: 10px; text-align: center; }
+
+/* RESUME CARD */
+.resume-card { border-color: var(--accent); background: linear-gradient(180deg, #fdf4e6 0%, var(--surface) 60%); }
+.resume-card h3 { color: var(--accent); }
+.resume-players { font-size: 15px; font-weight: 500; }
+.resume-progress { font-size: 13px; color: var(--text3); margin-top: 4px; }
+
+/* MODAL */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 14, 23, 0.55);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  padding-top: max(16px, env(safe-area-inset-top));
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  width: 100%;
+  max-width: 520px;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+}
+.modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.modal-head h2 { margin-bottom: 0; }
+.modal-sub { font-size: 12px; color: var(--text3); }
+.modal-body { padding: 16px; overflow-y: auto; flex: 1; min-height: 0; }
+.modal-foot { padding: 12px 16px 16px; border-top: 1px solid var(--border); }
+.pill-btn { cursor: pointer; font-family: 'Kreon', serif; }
+.pill-btn:hover { border-color: var(--accent2); color: var(--text); }
 
 /* METRIC */
 .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }

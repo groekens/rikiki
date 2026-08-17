@@ -22,11 +22,13 @@
   <!-- NAV -->
   <nav class="nav">
     <button class="nav-btn active" id="nav-setup" onclick="showScreen('setup')">Joueurs</button>
-    <button class="nav-btn" id="nav-game" onclick="showScreen('game'); renderGameScreen();" disabled>Manche</button>
-    <button class="nav-btn" id="nav-scores" onclick="showScreen('scores'); renderScores();" disabled>Scores</button>
+    <button class="nav-btn" id="nav-game" onclick="showScreen('game')" disabled>Manche</button>
+    <button class="nav-btn" id="nav-scores" onclick="showScreen('scores')" disabled>Scores</button>
     <button class="nav-btn" id="nav-rules" onclick="showScreen('rules')">Règles</button>
-    <button class="nav-btn" id="nav-compte" onclick="showScreen('compte'); renderCompte();">👤</button>
+    <button class="nav-btn" id="nav-compte" onclick="showScreen('compte')">👤</button>
   </nav>
+
+  <div class="screens-wrap" id="screens-wrap">
 
   <!-- ── SETUP SCREEN ── -->
   <div class="screen active" id="screen-setup">
@@ -34,6 +36,17 @@
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
         <h1>Rikiki</h1>
         <span class="badge badge-amber" style="font-size:13px;">Nouvelle partie</span>
+      </div>
+
+      <!-- Resume banner (a game is saved and unfinished) -->
+      <div class="card resume-card" id="resume-card" style="display:none;">
+        <h3>⏸ Partie en pause</h3>
+        <div class="resume-players" id="resume-players"></div>
+        <div class="resume-progress" id="resume-progress"></div>
+        <div class="btn-row btn-row-inline">
+          <button class="btn btn-primary" onclick="resumeSavedGame()">Reprendre →</button>
+          <button class="btn btn-end" onclick="discardSavedGame()">Abandonner</button>
+        </div>
       </div>
 
       <div class="card">
@@ -128,7 +141,10 @@
           <div class="warn-box" id="warn-announce"></div>
         </div>
         <button class="btn btn-primary" onclick="validateAnnouncements()">Valider les annonces →</button>
-        <button class="btn btn-end" onclick="confirmEndGame()" style="margin-top:8px;">Terminer la partie</button>
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="pauseGame()">⏸ Mettre en pause</button>
+          <button class="btn btn-end" onclick="confirmEndGame()">Terminer la partie</button>
+        </div>
       </div>
 
       <!-- PHASE: Result -->
@@ -148,9 +164,16 @@
           </table>
         </div>
         <button class="btn btn-primary" onclick="validateResults()">Valider les résultats →</button>
-        <button class="btn btn-secondary" onclick="backToAnnounce()" style="margin-top:8px;">← Corriger les annonces</button>
-        <button class="btn btn-end" onclick="confirmEndGame()" style="margin-top:8px;">Terminer la partie</button>
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="backToAnnounce()">← Corriger les annonces</button>
+          <button class="btn btn-secondary" onclick="pauseGame()">⏸ Mettre en pause</button>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-end" onclick="confirmEndGame()">Terminer la partie</button>
+        </div>
       </div>
+
+      <button class="btn btn-secondary" id="btn-fix-round" onclick="openRoundPicker()" style="margin-top:8px;display:none;">✏️ Corriger une manche précédente</button>
     </div>
   </div>
 
@@ -165,9 +188,10 @@
             <tbody id="score-tbody"></tbody>
           </table>
         </div>
+        <p class="score-hint" id="score-hint">Touchez une case pour corriger la manche.</p>
       </div>
-      <button class="btn btn-secondary" onclick="showScreen('game'); renderGameScreen();" id="back-to-game-btn">← Retour à la manche</button>
-      <button class="btn btn-end" onclick="confirmEndGame()" style="margin-top:8px;">Terminer la partie</button>
+      <button class="btn btn-secondary" onclick="showScreen('game')" id="back-to-game-btn">← Retour à la manche</button>
+      <button class="btn btn-end" onclick="confirmEndGame()" style="margin-top:8px;" id="btn-end-scores">Terminer la partie</button>
     </div>
   </div>
 
@@ -187,7 +211,7 @@
         </div>
         <div class="rule-block">
           <h3>🚫 Règle des annonces</h3>
-          <p>La somme des annonces ne peut <strong>pas</strong> être égale au nombre de plis de la manche. Le dernier à annoncer est donc contraint — l'app vous le signale.</p>
+          <p>La somme des annonces ne peut <strong>pas</strong> être égale au nombre de plis de la manche. Le dernier à annoncer est donc contraint, l'app vous le signale.</p>
         </div>
         <div class="rule-block">
           <h3>🎯 Atout</h3>
@@ -242,6 +266,11 @@
           </div>
         </div>
 
+        <h3 style="margin-top:16px;margin-bottom:8px;">Parties en cours</h3>
+        <div id="encours-list">
+          <div class="historique-empty">Aucune partie en cours</div>
+        </div>
+
         <h3 style="margin-top:16px;margin-bottom:8px;">Historique des parties</h3>
         <div id="historique-list">
           <div style="text-align:center;padding:20px;color:var(--text3);font-size:13px;">Chargement…</div>
@@ -250,7 +279,58 @@
     </div>
   </div>
 
+  </div><!-- .screens-wrap -->
+
 </div><!-- #app -->
+
+<!-- ── EDIT ROUND MODAL ── -->
+<div class="modal-backdrop" id="edit-modal" style="display:none;" onclick="onModalBackdrop(event)">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="edit-title">
+    <div class="modal-head">
+      <div>
+        <h2 id="edit-title" style="margin-bottom:2px;">Corriger la manche</h2>
+        <div class="modal-sub" id="edit-sub"></div>
+      </div>
+      <button class="btn-sm" onclick="closeEditRound()" aria-label="Fermer">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <table class="announce-table" id="edit-table">
+        <thead>
+          <tr>
+            <th style="text-align:left;">Joueur</th>
+            <th>Annoncé</th>
+            <th>Réalisé</th>
+            <th>Points</th>
+          </tr>
+        </thead>
+        <tbody id="edit-tbody"></tbody>
+      </table>
+      <div class="warn-box" id="edit-warn"></div>
+    </div>
+
+    <div class="modal-foot">
+      <button class="btn btn-primary" onclick="saveEditRound()">Enregistrer les corrections</button>
+      <button class="btn btn-secondary" onclick="closeEditRound()" style="margin-top:8px;">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── ROUND PICKER MODAL ── -->
+<div class="modal-backdrop" id="picker-modal" style="display:none;" onclick="onPickerBackdrop(event)">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="picker-title">
+    <div class="modal-head">
+      <h2 id="picker-title">Quelle manche corriger ?</h2>
+      <button class="btn-sm" onclick="closeRoundPicker()" aria-label="Fermer">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="seq-wrap" id="picker-list"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeRoundPicker()">Annuler</button>
+    </div>
+  </div>
+</div>
 
 <footer>
   <a class="powered-by" href="https://nuxo.be" target="_blank" rel="noopener">
@@ -261,6 +341,7 @@
 <div class="toast" id="toast"></div>
 
 <script type="module" src="js/firebase.js"></script>
+<script src="js/storage.js"></script>
 <script src="js/game.js"></script>
 <script src="js/app.js"></script>
 <script>
