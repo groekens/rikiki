@@ -292,56 +292,96 @@ input[type=number] { text-align: center; }
   font-weight: 600;
 }
 
-/* SCORE TABLE */
+/* SCORE TABLE
+   Manches en lignes, joueurs en colonnes. Le nombre de joueurs est borné
+   (2 à 8), celui des manches ne l'est pas (jusqu'à 51) : la dimension qui
+   grandit doit être celle qui défile verticalement. */
 .score-wrap { overflow-x: auto; }
-.score-table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 280px; }
-.score-table th {
+.score-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+
+/* En-tête collé en haut : le classement reste lisible pendant le défilement. */
+.score-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--surface);
+  padding: 6px 6px 10px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+}
+.score-table th.col-round {
+  left: 0;
+  z-index: 4;
+  text-align: left;
   font-family: 'Kreon', serif;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text3);
-  padding: 6px 8px;
-  text-align: center;
-  white-space: nowrap;
 }
-.score-table th:first-child { text-align: left; }
-.score-table td {
-  padding: 8px;
+.score-table th.col-player { min-width: 62px; }
+.ph-name {
+  display: block;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+  margin: 0 auto;
+}
+.ph-total {
+  display: block;
+  font-family: 'Kreon', serif;
+  font-size: 21px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.1;
+  margin-top: 1px;
+}
+.score-table th.col-player.leads .ph-name,
+.score-table th.col-player.leads .ph-total { color: var(--accent); }
+
+.score-table tbody td {
+  padding: 7px 6px;
   text-align: center;
   border-top: 1px solid var(--border);
   font-size: 13px;
 }
-.score-table td:first-child {
-  text-align: left;
-  font-weight: 500;
-  font-size: 14px;
-}
-
-/* A game runs 25 to 51 rounds, so the table always scrolls sideways. Pinning
-   the name and the total keeps the only two columns that matter on screen. */
-.score-table th:first-child, .score-table td:first-child,
-.score-table th:last-child, .score-table td:last-child {
+.score-table td.col-round {
   position: sticky;
+  left: 0;
   z-index: 2;
   background: var(--surface);
+  text-align: left;
+  white-space: nowrap;
 }
-.score-table th:first-child, .score-table td:first-child {
-  left: 0;
-  box-shadow: inset -1px 0 0 var(--border);
-}
-.score-table th:last-child, .score-table td:last-child {
-  right: 0;
-  box-shadow: inset 1px 0 0 var(--border);
-}
-.score-table th { background: var(--surface); }
-.score-table .round-cell { min-width: 48px; }
-.score-table tr.leader td:first-child { color: var(--accent); }
-.score-table th.editable, .score-table td.editable { cursor: pointer; transition: background 0.15s; }
-.score-table th.editable:hover, .score-table td.editable:hover { background: var(--surface2); }
-.score-table th.editable { text-decoration: underline dotted; text-underline-offset: 3px; }
+.score-table .rn { font-family: 'Kreon', serif; font-weight: 600; font-size: 13px; color: var(--text2); }
+.score-table .rc { font-size: 11px; color: var(--text3); margin-left: 5px; }
+
+/* Toute la ligne mène à la correction de la manche. */
+.score-table tr.round-row { cursor: pointer; }
+.score-table tr.round-row:hover td { background: var(--surface2); }
+.score-table td.score-empty { text-align: center; color: var(--text3); padding: 22px 8px; }
 .score-hint { font-size: 12px; color: var(--text3); margin-top: 10px; text-align: center; }
+
+/* 5 joueurs et plus : 7 colonnes doivent tenir dans ~320 px sur un téléphone. */
+.score-table.dense th.col-player { min-width: 42px; }
+.score-table.dense thead th { padding: 5px 3px 8px; }
+.score-table.dense tbody td { padding: 6px 3px; }
+.score-table.dense .ph-name { font-size: 11px; max-width: 62px; }
+.score-table.dense .ph-total { font-size: 17px; }
+.score-table.dense .badge { font-size: 11px; padding: 2px 6px; }
+.score-table.dense .rn { font-size: 12px; }
+.score-table.dense .rc { display: none; }
+/* En vue paysage la place ne manque pas : on rend le détail. */
+@media (min-width: 840px) {
+  body.split .score-table.dense .rc { display: inline; }
+  body.split .score-table.dense th.col-player { min-width: 54px; }
+}
 
 /* RESUME CARD */
 .resume-card { border-color: var(--accent); background: linear-gradient(180deg, #fdf4e6 0%, var(--surface) 60%); }

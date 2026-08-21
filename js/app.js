@@ -591,46 +591,59 @@ function renderScores() {
   const state = Game.state;
   if (!state.players.length) return;
 
-  const completedRounds = Game.completedRounds();
+  const done = Game.completedRounds();
+  const players = state.players;
+  const totals = players.map((_, i) => Game.getTotal(i));
+  const best = totals.length ? Math.max.apply(null, totals) : 0;
+
   const thead = document.getElementById('score-thead');
   const tbody = document.getElementById('score-tbody');
+  // Au-dela de 4 joueurs, 7 colonnes ne tiennent plus sur un telephone:
+  // on resserre plutot que d'imposer un defilement lateral.
+  const table = thead.closest('table');
+  if (table) table.classList.toggle('dense', players.length >= 5);
 
-  let headRow = '<th>Joueur</th>';
-  for (let m = 0; m < completedRounds; m++) {
-    headRow += `<th class="editable round-cell" onclick="openEditRound(${m})" title="Corriger la manche ${m + 1}">M${m + 1}</th>`;
-  }
-  headRow += '<th>Total</th>';
-  thead.innerHTML = headRow;
+  // Colonnes = joueurs (2 a 8, borne), lignes = manches (jusqu'a 51). Le total
+  // vit dans l'en-tete, qui reste colle en haut pendant le defilement.
+  let head = '<th class="col-round">Manche</th>';
+  players.forEach((p, i) => {
+    const leads = done > 0 && totals[i] === best;
+    head += `<th class="col-player${leads ? ' leads' : ''}">
+      <span class="ph-name">${p.name}</span>
+      <span class="ph-total">${totals[i]}</span>
+    </th>`;
+  });
+  thead.innerHTML = head;
 
-  const sorted = Game.getSortedPlayers();
   tbody.innerHTML = '';
-  sorted.forEach((p, rank) => {
+  const hint = document.getElementById('score-hint');
+
+  if (done === 0) {
+    tbody.innerHTML = `<tr><td class="score-empty" colspan="${players.length + 1}">Aucune manche terminée pour l'instant</td></tr>`;
+    if (hint) hint.style.display = 'none';
+    return;
+  }
+
+  for (let m = 0; m < done; m++) {
+    const r = state.rounds[m];
     const tr = document.createElement('tr');
-    if (rank === 0) tr.classList.add('leader');
-    let row = `<td><div style="display:flex;align-items:center;gap:8px;">
-      <div class="avatar" style="width:24px;height:24px;font-size:10px;">${p.name[0].toUpperCase()}</div>
-      ${rank === 0 ? `<strong>${p.name}</strong>` : p.name}</div></td>`;
-    for (let m = 0; m < completedRounds; m++) {
+    tr.className = 'round-row';
+    tr.title = `Corriger la manche ${m + 1}`;
+    tr.setAttribute('onclick', `openEditRound(${m})`);
+
+    let row = `<td class="col-round"><span class="rn">M${m + 1}</span><span class="rc">${r.cards}c</span></td>`;
+    players.forEach((p, i) => {
       const pts = p.scores[m];
-      if (pts === undefined || pts === null) { row += '<td class="round-cell">—</td>'; continue; }
-      const ann = state.rounds[m]?.announcements[p.idx];
-      const ok = ann && ann.announced === ann.got;
-      row += `<td class="editable round-cell" onclick="openEditRound(${m})" title="Corriger la manche ${m + 1}">
-        <span class="badge ${ok ? 'badge-green' : 'badge-red'}" style="font-size:11px;">${pts > 0 ? '+' : ''}${pts}</span></td>`;
-    }
-    row += `<td style="font-family:'Kreon',serif;font-weight:700;font-size:16px;">${p.total}</td>`;
+      if (pts === undefined || pts === null) { row += '<td>—</td>'; return; }
+      const a = r.announcements[i];
+      const ok = a && a.announced === a.got;
+      row += `<td><span class="badge ${ok ? 'badge-green' : 'badge-red'}">${pts > 0 ? '+' : ''}${pts}</span></td>`;
+    });
     tr.innerHTML = row;
     tbody.appendChild(tr);
-  });
+  }
 
-  const hint = document.getElementById('score-hint');
-  if (hint) hint.style.display = completedRounds > 0 ? 'block' : 'none';
-
-  // 25 to 51 rounds never fit: show the most recent ones, which are the ones
-  // being played. Skipped while a correction modal is open so the user keeps
-  // their place in the table.
-  const wrap = document.querySelector('.score-wrap');
-  if (wrap && editingRound === null) wrap.scrollLeft = wrap.scrollWidth;
+  if (hint) hint.style.display = 'block';
 }
 
 // ─── Settings ─────────────────────────────────────────────────────
