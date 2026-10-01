@@ -26,6 +26,54 @@
   --shadow-md: 0 2px 4px rgba(43, 33, 48, 0.05), 0 8px 24px rgba(43, 33, 48, 0.08);
   --radius: 18px;
   --radius-sm: 12px;
+  --nav-bg: rgba(255, 255, 255, 0.85);
+  color-scheme: light;
+}
+
+/* MODE SOMBRE : même chaleur, posée sur une aubergine très foncée plutôt
+   que sur du noir. Actif si le téléphone est en sombre (sauf choix "Clair"),
+   ou si l'utilisateur force "Sombre". */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1c1720;
+    --surface: #272029;
+    --surface2: #332b36;
+    --surface3: #443a47;
+    --text: #f4edf2;
+    --text2: #c9bec8;
+    --text3: #8f8392;
+    --border: rgba(255, 255, 255, 0.08);
+    --accent-soft: rgba(239, 90, 70, 0.18);
+    --accent-dark: #ff8a73;
+    --green: #4fc08a;
+    --green-soft: rgba(79, 192, 138, 0.16);
+    --red: #ff7b8c;
+    --red-soft: rgba(255, 123, 140, 0.15);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
+    --nav-bg: rgba(39, 32, 41, 0.85);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1c1720;
+  --surface: #272029;
+  --surface2: #332b36;
+  --surface3: #443a47;
+  --text: #f4edf2;
+  --text2: #c9bec8;
+  --text3: #8f8392;
+  --border: rgba(255, 255, 255, 0.08);
+  --accent-soft: rgba(239, 90, 70, 0.18);
+  --accent-dark: #ff8a73;
+  --green: #4fc08a;
+  --green-soft: rgba(79, 192, 138, 0.16);
+  --red: #ff7b8c;
+  --red-soft: rgba(255, 123, 140, 0.15);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --nav-bg: rgba(39, 32, 41, 0.85);
+  color-scheme: dark;
 }
 
 /* Une couleur par siège autour de la table. */
@@ -37,6 +85,16 @@
 .p5 { --pc: #3d974d; --pc-soft: #def1e1; }
 .p6 { --pc: #d14a8c; --pc-soft: #fae2ee; }
 .p7 { --pc: #5c6b7a; --pc-soft: #e5e9ed; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .p0, :root:not([data-theme="light"]) .p1, :root:not([data-theme="light"]) .p2, :root:not([data-theme="light"]) .p3,
+  :root:not([data-theme="light"]) .p4, :root:not([data-theme="light"]) .p5, :root:not([data-theme="light"]) .p6, :root:not([data-theme="light"]) .p7 {
+    --pc-soft: color-mix(in srgb, var(--pc) 22%, transparent);
+  }
+  :root:not([data-theme="light"]) .powered-by img { filter: invert(1) hue-rotate(180deg); }
+}
+:root[data-theme="dark"] :is(.p0, .p1, .p2, .p3, .p4, .p5, .p6, .p7) { --pc-soft: color-mix(in srgb, var(--pc) 22%, transparent); }
+:root[data-theme="dark"] .powered-by img { filter: invert(1) hue-rotate(180deg); }
 
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
@@ -69,7 +127,7 @@ html, body {
   gap: 4px;
   margin: 10px 12px 0;
   padding: 4px;
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--nav-bg);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   border: 1px solid var(--border);
@@ -306,7 +364,7 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin
   border-radius: var(--radius-sm);
   border: none;
   background: var(--text);
-  color: #fff;
+  color: var(--bg);
   font-family: 'Kreon', serif;
   font-size: 15px;
   font-weight: 700;
@@ -838,7 +896,7 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin
   left: 50%;
   transform: translateX(-50%) translateY(120px);
   background: var(--text);
-  color: #fff;
+  color: var(--bg);
   padding: 11px 20px;
   border-radius: 99px;
   font-size: 14px;
@@ -1048,3 +1106,153 @@ footer {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── PROTOTYPE : saisie par pastilles ────────────────────────────── */
+.pick-list { display: flex; flex-direction: column; }
+.pick-row {
+  padding: 10px 0 12px;
+  border-bottom: 1px solid var(--border);
+}
+.pick-row:last-child { border-bottom: none; padding-bottom: 2px; }
+.pick-row:first-child { padding-top: 0; }
+.pick-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 15px;
+  font-weight: 500;
+}
+.pick-head .player-cell { flex: 1; min-width: 0; }
+.pick-meta { font-size: 12px; font-weight: 400; color: var(--text3); white-space: nowrap; }
+.pick-meta strong { color: var(--text); font-family: 'Kreon', serif; font-size: 14px; }
+.pick-head .pts-cell { min-width: 44px; text-align: right; }
+
+/* Défilement horizontal au-delà de 7 à 8 pastilles (manches à 13 cartes). */
+.chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px 2px 4px;
+  margin: 0 -2px;
+  scroll-snap-type: x proximity;
+}
+.chips::-webkit-scrollbar { display: none; }
+.chip {
+  flex: 0 0 auto;
+  min-width: 42px;
+  height: 42px;
+  padding: 0 10px;
+  border-radius: 12px;
+  border: 1.5px solid transparent;
+  background: var(--surface2);
+  color: var(--text);
+  font-family: 'Kreon', serif;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  scroll-snap-align: start;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.1s;
+}
+.chip:active { transform: scale(0.94); }
+.chip.selected {
+  background: var(--pc, var(--accent));
+  color: #fff;
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--pc, var(--accent)) 35%, transparent);
+}
+.chip.forbidden {
+  background: transparent;
+  border: 1.5px dashed var(--red);
+  color: var(--red);
+  opacity: 0.6;
+  text-decoration: line-through;
+}
+.pick-row.is-forbidden .chip.selected { background: var(--red); box-shadow: none; }
+
+
+.auto-tag {
+  display: none;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-dark);
+  background: var(--accent-soft);
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+.pick-row.auto .auto-tag { display: inline-block; animation: pop 0.3s cubic-bezier(.2, 1.4, .4, 1); }
+.pick-row.auto .chip.selected { outline: 2px dashed var(--accent); outline-offset: 2px; }
+
+.results-total {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--surface2);
+  font-size: 14px;
+  color: var(--text2);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.results-total.ok { background: var(--green-soft); color: var(--green); }
+.results-total.ko { background: var(--red-soft); color: var(--red); }
+
+/* ── PROTOTYPE : joueurs récents ─────────────────────────────────── */
+.recent { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; }
+.recent:empty { display: none; }
+.recent-label { font-size: 12px; color: var(--text3); margin-right: 2px; }
+.recent-chip {
+  padding: 6px 12px;
+  border-radius: 99px;
+  border: 1px dashed var(--surface3);
+  background: transparent;
+  color: var(--text2);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.recent-chip:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-dark); }
+
+/* ── PROTOTYPE : statistiques ────────────────────────────────────── */
+.stats-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.stats-table th {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text3);
+  text-align: center;
+  padding: 0 4px 8px;
+}
+.stats-table td {
+  text-align: center;
+  padding: 8px 4px;
+  border-top: 1px solid var(--border);
+  font-family: 'Kreon', serif;
+  font-size: 16px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.stats-table td:first-child { text-align: left; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; max-width: 0; width: 38%; }
+.stats-table td small { display: block; font-family: 'DM Sans', sans-serif; font-size: 11px; font-weight: 400; color: var(--text3); }
+.stats-table td.top { color: var(--accent-dark); }
+
+/* ── PROTOTYPE : sélecteur de thème ──────────────────────────────── */
+.segmented {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--surface2);
+  border-radius: 99px;
+}
+.segmented button {
+  flex: 1;
+  padding: 9px;
+  border: none;
+  border-radius: 99px;
+  background: transparent;
+  color: var(--text2);
+  font-family: 'Kreon', serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.segmented button.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }

@@ -15,6 +15,10 @@
   <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32x32.png">
   <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
   <link rel="stylesheet" href="css/style.css">
+  <script>
+    // Avant le rendu, sinon l'écran clair clignote au lancement en mode sombre.
+    try { var t = localStorage.getItem('rikiki.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
 </head>
 <body>
 <div id="app">
@@ -56,6 +60,7 @@
         <h3>Joueurs</h3>
         <p class="card-hint">Dans le sens des aiguilles d'une montre. Le premier distribue en premier.</p>
         <div id="player-list"></div>
+        <div class="recent" id="recent-players"></div>
         <div class="add-row">
           <input type="text" id="player-input" placeholder="Nom du joueur" maxlength="20" autocomplete="off" enterkeyhint="done">
           <button class="btn-add" onclick="addPlayer()">Ajouter</button>
@@ -107,7 +112,8 @@
       <div class="crown">🏆</div>
       <div class="winner-name" id="winner-name"></div>
       <div class="winner-pts" id="winner-pts"></div>
-      <button class="btn btn-primary" onclick="showScreen('scores')" style="margin-top:24px;">Voir les scores</button>
+      <button class="btn btn-primary" onclick="shareResult()" style="margin-top:24px;">Partager le résultat</button>
+      <button class="btn btn-secondary" onclick="showScreen('scores')" style="margin-top:8px;">Voir les scores</button>
       <button class="btn btn-secondary" onclick="resetGame()" style="margin-top:8px;">Nouvelle partie</button>
     </div>
 
@@ -140,15 +146,7 @@
       <div id="phase-announce">
         <div class="card">
           <h3>Annonces</h3>
-          <table class="announce-table">
-            <thead>
-              <tr>
-                <th style="text-align:left;">Joueur</th>
-                <th>Annonce</th>
-              </tr>
-            </thead>
-            <tbody id="announce-tbody"></tbody>
-          </table>
+          <div class="pick-list" id="announce-tbody"></div>
           <div class="last-hint" id="last-hint" aria-live="polite"></div>
         </div>
         <button class="btn btn-primary" onclick="validateAnnouncements()">Valider les annonces</button>
@@ -162,17 +160,8 @@
       <div id="phase-result" style="display:none;">
         <div class="card">
           <h3>Plis réalisés</h3>
-          <table class="announce-table">
-            <thead>
-              <tr>
-                <th style="text-align:left;">Joueur</th>
-                <th>Annoncé</th>
-                <th>Réalisé</th>
-                <th>Points</th>
-              </tr>
-            </thead>
-            <tbody id="result-tbody"></tbody>
-          </table>
+          <div class="pick-list" id="result-tbody"></div>
+          <div class="results-total" id="results-total"></div>
         </div>
         <button class="btn btn-primary" onclick="validateResults()">Valider les résultats</button>
         <div class="btn-row">
@@ -200,6 +189,10 @@
           </table>
         </div>
         <p class="score-hint" id="score-hint">Touchez une ligne pour corriger la manche.</p>
+      </div>
+      <div class="card" id="game-stats" style="display:none;">
+        <h3>Stats de la partie</h3>
+        <div id="game-stats-body"></div>
       </div>
       <button class="btn btn-secondary" onclick="showScreen('game')" id="back-to-game-btn">Retour à la manche</button>
       <button class="btn btn-end" onclick="confirmEndGame()" style="margin-top:8px;" id="btn-end-scores">Terminer la partie</button>
@@ -286,6 +279,21 @@
         <h3 style="margin-top:16px;margin-bottom:8px;">Historique des parties</h3>
         <div id="historique-list">
           <div style="text-align:center;padding:20px;color:var(--text3);font-size:13px;">Chargement…</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <h3>Statistiques des joueurs</h3>
+        <p class="card-hint">Sur les parties terminées sur cet appareil.</p>
+        <div id="alltime-stats"></div>
+      </div>
+
+      <div class="card">
+        <h3>Apparence</h3>
+        <div class="segmented" id="theme-picker" role="radiogroup" aria-label="Thème">
+          <button data-theme-choice="auto" onclick="setTheme('auto')">Auto</button>
+          <button data-theme-choice="light" onclick="setTheme('light')">Clair</button>
+          <button data-theme-choice="dark" onclick="setTheme('dark')">Sombre</button>
         </div>
       </div>
     </div>

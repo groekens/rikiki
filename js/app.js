@@ -32,6 +32,7 @@ function showScreen(id) {
   if (split || id === 'scores') renderScores();
   if (id === 'setup') refreshResumeCard();
   if (id === 'compte') renderCompte();
+  updateWakeLock();
 }
 
 // Re-evaluate the split layout when the iPad is rotated.
@@ -216,6 +217,7 @@ function renderSetup() {
     list.appendChild(row);
   });
   justAdded = -1;
+  renderRecentPlayers();
   updateRoundPreview();
 }
 
@@ -257,6 +259,7 @@ function startGame() {
   const pending = saved && saved.state && saved.state.phase !== 'setup' && saved.state.phase !== 'finished';
   if (pending && !confirm('Une partie est en pause. Démarrer une nouvelle partie va la remplacer. Continuer ?')) return;
 
+  rememberPlayers(setupPlayers);
   Game.init([...setupPlayers]);
   enableGameNav();
   syncCloud();
@@ -344,24 +347,69 @@ function renderAnnouncePhase() {
   const r = Game.currentRoundData();
   const order = Game.getAnnounceOrder();
   const players = Game.state.players;
-  const tbody = document.getElementById('announce-tbody');
-  tbody.innerHTML = '';
+  const list = document.getElementById('announce-tbody');
+  list.innerHTML = '';
 
-  order.forEach((pi) => {
-    const tr = document.createElement('tr');
-    tr.dataset.playerIdx = pi;
+  order.forEach((pi, pos) => {
     const prefill = r.announcements[pi].announced;
-    tr.innerHTML = `
-      <td>${playerCell(players[pi].name, pi)}</td>
-      <td><input type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="${r.cards}" id="ann-${pi}" placeholder="0" value="${prefill ?? ''}" oninput="checkAnnounceSum()"></td>`;
-    tbody.appendChild(tr);
+    const row = document.createElement('div');
+    row.className = 'pick-row';
+    row.id = 'row-ann-' + pi;
+    row.innerHTML = `
+      <div class="pick-head">
+        ${playerCell(players[pi].name, pi)}
+        <span class="pick-meta">${pos === 0 ? 'parle en premier' : pos === order.length - 1 ? 'parle en dernier' : ''}</span>
+      </div>
+      ${chipsHtml('ann', pi, r.cards)}
+      <input type="hidden" id="ann-${pi}" value="${prefill ?? ''}">`;
+    list.appendChild(row);
+    syncChips('ann', pi);
   });
-  // Le dernier à parler qui prend la main suffit à faire apparaître l'indice,
-  // même si les autres ont laissé leur case vide pour "0".
-  const lastInput = document.getElementById('ann-' + order[order.length - 1]);
-  lastInput.addEventListener('focus', () => { lastInputFocused = true; checkAnnounceSum(); });
+  // Toucher la rangée du dernier suffit à faire apparaître l'indice.
+  const lastRow = document.getElementById('row-ann-' + order[order.length - 1]);
+  lastRow.addEventListener('pointerdown', () => { if (!lastInputFocused) { lastInputFocused = true; checkAnnounceSum(); } });
   lastInputFocused = false;
   checkAnnounceSum();
+}
+
+// ─── Pastilles de saisie ──────────────────────────────────────────
+// Un tap par joueur au lieu du clavier numérique, qui masquait la moitié
+// de l'écran. La valeur vit dans un input caché : la validation n'a pas
+// eu à changer.
+function chipsHtml(prefix, pi, cards) {
+  // La pastille choisie prend la couleur du joueur.
+  let h = `<div class="chips p${pi % PLAYER_COLORS}" role="radiogroup">`;
+  for (let v = 0; v <= cards; v++) {
+    h += `<button type="button" class="chip" role="radio" data-v="${v}" onclick="pickChip('${prefix}', ${pi}, ${v})">${v}</button>`;
+  }
+  return h + '</div>';
+}
+
+function syncChips(prefix, pi) {
+  const input = document.getElementById(prefix + '-' + pi);
+  const row = document.getElementById('row-' + prefix + '-' + pi);
+  if (!input || !row) return;
+  row.querySelectorAll('.chip').forEach(c => {
+    const on = c.dataset.v === input.value;
+    c.classList.toggle('selected', on);
+    c.setAttribute('aria-checked', on ? 'true' : 'false');
+    if (on) c.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  });
+}
+
+function pickChip(prefix, pi, v) {
+  const input = document.getElementById(prefix + '-' + pi);
+  const chip = document.querySelector(`#row-${prefix}-${pi} .chip[data-v="${v}"]`);
+  if (chip && chip.classList.contains('forbidden')) {
+    shake(chip);
+    showToast(`${Game.state.players[pi].name} ne peut pas annoncer ${v}`);
+    return;
+  }
+  input.value = String(v);
+  syncChips(prefix, pi);
+  replay(chip, 'pop');
+  if (prefix === 'ann') checkAnnounceSum();
+  else onResultPicked(pi);
 }
 
 function playerCell(name, idx) {
@@ -393,6 +441,9 @@ function checkAnnounceSum() {
   const hint = document.getElementById('last-hint');
   const lastInput = document.getElementById('ann-' + lastPi);
 
+  const lastChips = document.querySelectorAll(`#row-ann-${lastPi} .chip`);
+  lastChips.forEach(c => c.classList.remove('forbidden'));
+
   if (!othersFilled && !lastInputFocused) {
     hint.classList.remove('visible', 'blocked');
     lastInput.classList.remove('is-forbidden');
@@ -400,6 +451,7 @@ function checkAnnounceSum() {
   }
 
   const forbidden = forbiddenForLast();
+  lastChips.forEach(c => c.classList.toggle('forbidden', parseInt(c.dataset.v) === forbidden));
   const lastRaw = lastInput.value.trim();
   const blocked = forbidden >= 0 && lastRaw !== '' && parseInt(lastRaw) === forbidden;
   const text = forbidden < 0
@@ -415,6 +467,7 @@ function checkAnnounceSum() {
   hint.classList.add('visible');
   hint.classList.toggle('blocked', blocked);
   lastInput.classList.toggle('is-forbidden', blocked);
+  document.getElementById('row-ann-' + lastPi).classList.toggle('is-forbidden', blocked);
 }
 
 function validateAnnouncements() {
@@ -433,12 +486,14 @@ function validateAnnouncements() {
     const order2 = Game.getAnnounceOrder();
     const lastPi = order2[order2.length - 1];
     showToast(`${Game.state.players[lastPi].name} ne peut pas annoncer ${forbiddenForLast()}`);
-    shake(document.getElementById('ann-' + lastPi));
+    shake(document.getElementById('row-ann-' + lastPi));
     return;
   }
   Game.setAnnouncements(announced);
   renderResultPhase();
 }
+
+let manualResults = new Set();
 
 function renderResultPhase() {
   document.getElementById('phase-announce').style.display = 'none';
@@ -446,19 +501,66 @@ function renderResultPhase() {
 
   const r = Game.currentRoundData();
   const players = Game.state.players;
-  const tbody = document.getElementById('result-tbody');
-  tbody.innerHTML = '';
+  const list = document.getElementById('result-tbody');
+  list.innerHTML = '';
+  manualResults = new Set();
 
-  players.forEach((p, pi) => {
+  Game.getAnnounceOrder().forEach(pi => {
     const ann = r.announcements[pi].announced;
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${playerCell(p.name, pi)}</td>
-      <td><span class="badge badge-neutral">${ann}</span></td>
-      <td><input type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="${r.cards}" id="res-${pi}" placeholder="0" oninput="previewPoints(${pi})"></td>
-      <td id="pts-preview-${pi}" class="pts-cell">·</td>`;
-    tbody.appendChild(tr);
+    const row = document.createElement('div');
+    row.className = 'pick-row';
+    row.id = 'row-res-' + pi;
+    row.innerHTML = `
+      <div class="pick-head">
+        ${playerCell(players[pi].name, pi)}
+        <span class="pick-meta">annonce <strong>${ann}</strong></span>
+        <span class="auto-tag">auto</span>
+        <span class="pts-cell" id="pts-preview-${pi}">·</span>
+      </div>
+      ${chipsHtml('res', pi, r.cards)}
+      <input type="hidden" id="res-${pi}" value="">`;
+    list.appendChild(row);
   });
+  refreshResults();
+}
+
+// Quand tous les joueurs sauf un ont saisi leurs plis, le dernier se déduit
+// du total. Il reste modifiable : le toucher le fait passer en manuel.
+function onResultPicked(pi) {
+  manualResults.add(pi);
+  refreshResults();
+}
+
+function refreshResults() {
+  const r = Game.currentRoundData();
+  const n = Game.state.players.length;
+  const all = Game.state.players.map((_, i) => i);
+
+  all.forEach(pi => {
+    if (!manualResults.has(pi)) document.getElementById('res-' + pi).value = '';
+    document.getElementById('row-res-' + pi).classList.remove('auto');
+  });
+
+  if (manualResults.size === n - 1) {
+    const missing = all.find(pi => !manualResults.has(pi));
+    const sum = [...manualResults].reduce((s, pi) => s + parseInt(document.getElementById('res-' + pi).value), 0);
+    const rest = r.cards - sum;
+    if (rest >= 0) {
+      document.getElementById('res-' + missing).value = String(rest);
+      replay(document.getElementById('row-res-' + missing), 'auto');
+    }
+  }
+
+  all.forEach(pi => { syncChips('res', pi); previewPoints(pi); });
+
+  const filled = all.filter(pi => document.getElementById('res-' + pi).value !== '');
+  const total = filled.reduce((s, pi) => s + parseInt(document.getElementById('res-' + pi).value), 0);
+  const el = document.getElementById('results-total');
+  const ok = filled.length === n && total === r.cards;
+  el.className = 'results-total' + (filled.length === n ? (ok ? ' ok' : ' ko') : '');
+  el.textContent = filled.length === n && !ok
+    ? `Total : ${total} plis sur ${r.cards}, il y a une erreur`
+    : `Total : ${total} / ${r.cards} plis`;
 }
 
 function formatPts(pts) {
@@ -476,10 +578,11 @@ function previewPoints(pi) {
   const r = Game.currentRoundData();
   const ann = r.announcements[pi].announced;
   const raw = document.getElementById('res-' + pi)?.value.trim();
-  const v = (raw === '' || raw === undefined) ? 0 : parseInt(raw);
   const el = document.getElementById('pts-preview-' + pi);
-  if (isNaN(v)) { el.innerHTML = '·'; return; }
-  el.innerHTML = pointsBadge(ann, v);
+  if (el.dataset.v === raw) return;
+  el.dataset.v = raw;
+  if (raw === '' || raw === undefined) { el.innerHTML = '·'; return; }
+  el.innerHTML = pointsBadge(ann, parseInt(raw));
   replay(el.firstElementChild, 'pop');
 }
 
@@ -494,11 +597,18 @@ function validateResults() {
     results.push(v);
   });
   if (results.includes(null)) { showToast('Valeurs invalides'); return; }
+  const missing = players.findIndex((_, pi) => document.getElementById('res-' + pi).value === '');
+  if (missing !== -1) {
+    showToast(`Plis de ${players[missing].name} à saisir`);
+    shake(document.getElementById('row-res-' + missing));
+    return;
+  }
   const sum = results.reduce((s, v) => s + v, 0);
   if (sum !== r.cards) { showToast(`Total des plis = ${sum}, attendu ${r.cards}`); return; }
 
   Game.setResults(results);
   syncCloud();
+  if (Game.state.phase === 'finished') archiveGame();
 
   if (Game.state.phase === 'finished') {
     showScreen('scores');
@@ -648,6 +758,7 @@ function saveEditRound() {
   const label = editingRound + 1;
   closeEditRound();
   syncCloud();
+  if (Game.state.phase === 'finished') archiveGame();
   renderScores();
   renderGameScreen();
   showToast(`Manche ${label} corrigée ✓`);
@@ -672,6 +783,8 @@ document.addEventListener('keydown', e => {
 function renderCompte() {
   // Auth state is managed by firebase.js via onAuthStateChanged
   if (window.currentUser && window.loadHistorique) window.loadHistorique();
+  renderAllTimeStats();
+  renderThemePicker();
 }
 
 // Called by firebase.js when the user picks a game from the cloud history.
@@ -722,6 +835,7 @@ function renderScores() {
   const hint = document.getElementById('score-hint');
 
   if (done === 0) {
+    document.getElementById('game-stats').style.display = 'none';
     tbody.innerHTML = `<tr><td class="score-empty" colspan="${players.length + 1}">Aucune manche terminée pour l'instant</td></tr>`;
     if (hint) hint.style.display = 'none';
     return;
@@ -751,6 +865,7 @@ function renderScores() {
   }
 
   if (hint) hint.style.display = 'block';
+  renderGameStats();
 }
 
 // ─── Settings ─────────────────────────────────────────────────────
@@ -921,3 +1036,322 @@ window.addEventListener('appinstalled', () => {
 });
 
 document.addEventListener('DOMContentLoaded', maybeShowInstallBanner);
+
+// ─── Écran allumé pendant la partie ───────────────────────────────
+// Le téléphone posé sur la table ne doit pas se verrouiller entre deux
+// manches. Le navigateur relâche le verrou quand l'app passe en arrière-plan,
+// d'où la nouvelle demande au retour.
+let wakeLock = null;
+
+async function updateWakeLock() {
+  if (!('wakeLock' in navigator)) return;
+  const want = Game.hasActiveGame() && Game.state.phase !== 'finished' && document.visibilityState === 'visible';
+  try {
+    if (want && !wakeLock) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    } else if (!want && wakeLock) {
+      await wakeLock.release();
+      wakeLock = null;
+    }
+  } catch (e) { wakeLock = null; }
+}
+document.addEventListener('visibilitychange', updateWakeLock);
+
+// ─── Joueurs récents ──────────────────────────────────────────────
+const KEY_RECENT = 'rikiki.recentPlayers.v1';
+
+function loadRecentPlayers() {
+  try { return JSON.parse(localStorage.getItem(KEY_RECENT) || '[]'); } catch (e) { return []; }
+}
+
+function rememberPlayers(names) {
+  const seen = new Set(names.map(n => n.toLowerCase()));
+  const merged = names.concat(loadRecentPlayers().filter(n => !seen.has(n.toLowerCase()))).slice(0, 12);
+  try { localStorage.setItem(KEY_RECENT, JSON.stringify(merged)); } catch (e) { /* noop */ }
+}
+
+function renderRecentPlayers() {
+  const el = document.getElementById('recent-players');
+  if (!el) return;
+  const taken = new Set(setupPlayers.map(n => n.toLowerCase()));
+  const recent = loadRecentPlayers().filter(n => !taken.has(n.toLowerCase()));
+  if (!recent.length || setupPlayers.length >= 8) { el.innerHTML = ''; return; }
+  el.innerHTML = `<span class="recent-label">Récents</span>` + recent.map(n =>
+    `<button type="button" class="recent-chip" onclick="addRecentPlayer(this.dataset.name)" data-name="${escapeHtml(n)}">+ ${escapeHtml(n)}</button>`
+  ).join('');
+}
+
+function addRecentPlayer(name) {
+  document.getElementById('player-input').value = name;
+  addPlayer();
+  document.getElementById('player-input').blur();
+}
+
+// ─── Statistiques ─────────────────────────────────────────────────
+// rounds : [{ a: [annonces par joueur], g: [plis par joueur] }]
+function computeStats(nPlayers, rounds) {
+  return Array.from({ length: nPlayers }, (_, i) => {
+    let ok = 0, streak = 0, best = 0, gap = 0;
+    rounds.forEach(r => {
+      if (r.a[i] === r.g[i]) { ok++; streak++; best = Math.max(best, streak); }
+      else { streak = 0; gap += Math.abs(r.a[i] - r.g[i]); }
+    });
+    return { ok, played: rounds.length, best, gap };
+  });
+}
+
+function currentRoundsCompact() {
+  const done = Game.completedRounds();
+  return Game.state.rounds.slice(0, done).map(r => ({
+    a: r.announcements.map(x => x.announced),
+    g: r.announcements.map(x => x.got),
+  }));
+}
+
+function renderGameStats() {
+  const card = document.getElementById('game-stats');
+  const body = document.getElementById('game-stats-body');
+  const rounds = currentRoundsCompact();
+  if (!rounds.length) { card.style.display = 'none'; return; }
+  const players = Game.state.players;
+  const stats = computeStats(players.length, rounds);
+
+  const pct = st => Math.round((st.ok / st.played) * 100);
+  const bestPct = Math.max(...stats.map(pct));
+  const bestStreak = Math.max(...stats.map(st => st.best));
+
+  body.innerHTML = `
+    <table class="stats-table">
+      <thead><tr><th></th><th>Réussies</th><th>Série</th><th>Plis ratés</th></tr></thead>
+      <tbody>${players.map((p, i) => {
+        const st = stats[i];
+        return `<tr>
+          <td>${playerCell(p.name, i)}</td>
+          <td class="${pct(st) === bestPct ? 'top' : ''}">${pct(st)}%<small>${st.ok}/${st.played}</small></td>
+          <td class="${st.best === bestStreak && bestStreak > 0 ? 'top' : ''}">${st.best}</td>
+          <td>${st.gap}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+  card.style.display = 'block';
+}
+
+const KEY_ARCHIVE = 'rikiki.archive.v1';
+
+function loadArchive() {
+  try { return JSON.parse(localStorage.getItem(KEY_ARCHIVE) || '[]'); } catch (e) { return []; }
+}
+
+// Une fiche compacte par partie terminée, sur l'appareil, sans compte.
+function archiveGame() {
+  const st = Game.state;
+  const entry = {
+    id: st.id,
+    at: st.finishedAt || Date.now(),
+    names: st.players.map(p => p.name),
+    totals: st.players.map((_, i) => Game.getTotal(i)),
+    rounds: currentRoundsCompact(),
+  };
+  const list = loadArchive().filter(g => g.id !== entry.id);
+  list.unshift(entry);
+  try { localStorage.setItem(KEY_ARCHIVE, JSON.stringify(list.slice(0, 50))); } catch (e) { /* noop */ }
+}
+
+function renderAllTimeStats() {
+  const el = document.getElementById('alltime-stats');
+  if (!el) return;
+  const games = loadArchive();
+  if (!games.length) { el.innerHTML = '<p class="muted">Termine une partie pour voir apparaître les statistiques.</p>'; return; }
+
+  const byName = new Map();
+  games.forEach(g => {
+    const stats = computeStats(g.names.length, g.rounds);
+    const best = Math.max(...g.totals);
+    g.names.forEach((name, i) => {
+      const key = name.toLowerCase();
+      const acc = byName.get(key) || { name, games: 0, wins: 0, ok: 0, played: 0, best: 0 };
+      acc.games++;
+      if (g.totals[i] === best) acc.wins++;
+      acc.ok += stats[i].ok;
+      acc.played += stats[i].played;
+      acc.best = Math.max(acc.best, g.totals[i]);
+      byName.set(key, acc);
+    });
+  });
+  const rows = [...byName.values()].sort((a, b) => b.wins - a.wins || b.ok / b.played - a.ok / a.played);
+
+  el.innerHTML = `
+    <table class="stats-table">
+      <thead><tr><th></th><th>Parties</th><th>Victoires</th><th>Réussite</th><th>Record</th></tr></thead>
+      <tbody>${rows.map((r, i) => `<tr>
+        <td>${playerCell(r.name, i)}</td>
+        <td>${r.games}</td>
+        <td class="${i === 0 && r.wins > 0 ? 'top' : ''}">${r.wins}</td>
+        <td>${Math.round((r.ok / r.played) * 100)}%</td>
+        <td>${r.best}</td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+}
+
+// ─── Partage du résultat ──────────────────────────────────────────
+// Une image à envoyer dans le groupe de la soirée : c'est le seul moment où
+// l'app sort de la table, donc le seul où elle peut se faire connaître.
+const PLAYER_HEX = ['#ef5a46', '#1a9a96', '#7a5bd6', '#d98a10', '#3a78dd', '#3d974d', '#d14a8c', '#5c6b7a'];
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+async function buildResultImage() {
+  const W = 1080, H = 1350;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const ctx = c.getContext('2d');
+  try { await Promise.all([document.fonts.load('700 64px Kreon'), document.fonts.load('400 32px "DM Sans"')]); } catch (e) { /* noop */ }
+
+  ctx.fillStyle = '#fbf7f2';
+  ctx.fillRect(0, 0, W, H);
+
+  // Bandeau corail en haut, comme celui de la manche.
+  const grad = ctx.createLinearGradient(0, 0, W, 380);
+  grad.addColorStop(0, '#f37a43');
+  grad.addColorStop(1, '#e8403c');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, 380);
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.font = '260px serif';
+  ctx.fillText('♠♥', 640, 420);
+
+  const sorted = Game.getSortedPlayers();
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  ctx.font = '700 48px Kreon';
+  ctx.fillText('🏆', W / 2, 110);
+  ctx.font = '700 92px Kreon';
+  ctx.fillText(sorted[0].name, W / 2, 230);
+  ctx.font = '400 36px "DM Sans"';
+  ctx.fillText(`remporte la partie avec ${sorted[0].total} pts`, W / 2, 295);
+  ctx.font = '400 28px "DM Sans"';
+  ctx.globalAlpha = 0.85;
+  ctx.fillText(`${Game.completedRounds()} manches · ${new Date().toLocaleDateString('fr-BE', { day: 'numeric', month: 'long', year: 'numeric' })}`, W / 2, 345);
+  ctx.globalAlpha = 1;
+
+  // Classement
+  // Bloc centré entre le bandeau et le logo, quel que soit le nombre de joueurs.
+  const rowH = Math.min(120, 620 / sorted.length);
+  const top = 420 + (640 - rowH * sorted.length) / 2;
+  ctx.textAlign = 'left';
+  sorted.forEach((p, rank) => {
+    const y = top + rank * rowH;
+    if (rank === 0) {
+      ctx.fillStyle = '#fde8e3';
+      roundRect(ctx, 70, y - 8, W - 140, rowH - 8, 24);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#9b909f';
+    ctx.font = '700 36px Kreon';
+    ctx.fillText(String(rank + 1), 110, y + rowH / 2 + 4);
+    const color = PLAYER_HEX[p.idx % PLAYER_HEX.length];
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(200, y + rowH / 2 - 8, 26, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.font = '700 28px Kreon';
+    ctx.fillText(p.name[0].toUpperCase(), 200, y + rowH / 2 + 2);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#2b2130';
+    ctx.font = '500 40px "DM Sans"';
+    ctx.fillText(p.name, 250, y + rowH / 2 + 6);
+    ctx.textAlign = 'right';
+    ctx.font = '700 44px Kreon';
+    ctx.fillStyle = rank === 0 ? '#d4412f' : '#2b2130';
+    ctx.fillText(`${p.total}`, W - 110, y + rowH / 2 + 6);
+    ctx.textAlign = 'left';
+  });
+
+  // Pied : logo + adresse
+  try {
+    const logo = await loadImage('logo.png');
+    const lw = 300, lh = lw * logo.height / logo.width;
+    ctx.drawImage(logo, (W - lw) / 2, H - 230, lw, lh);
+  } catch (e) { /* noop */ }
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#5f5367';
+  ctx.font = '400 30px "DM Sans"';
+  ctx.fillText('Compte tes points sur rikiki.nuxo.be', W / 2, H - 90);
+  ctx.fillStyle = '#9b909f';
+  ctx.font = '400 24px "DM Sans"';
+  ctx.fillText('Powered by Nuxo', W / 2, H - 50);
+
+  return new Promise(resolve => c.toBlob(resolve, 'image/png'));
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+async function shareResult() {
+  const blob = await buildResultImage();
+  const file = new File([blob], 'rikiki-resultat.png', { type: 'image/png' });
+  const winner = Game.getSortedPlayers()[0];
+  const text = `${winner.name} remporte la partie de Rikiki avec ${winner.total} pts ! https://rikiki.nuxo.be`;
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], text }); } catch (e) { /* partage annulé */ }
+    return;
+  }
+  // Ordinateur ou navigateur sans partage de fichier : on télécharge l'image.
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = file.name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  showToast('Image téléchargée ✓');
+}
+
+// ─── Thème ────────────────────────────────────────────────────────
+const KEY_THEME = 'rikiki.theme';
+
+function currentThemeChoice() {
+  try { return localStorage.getItem(KEY_THEME) || 'auto'; } catch (e) { return 'auto'; }
+}
+
+function setTheme(choice) {
+  try { localStorage.setItem(KEY_THEME, choice); } catch (e) { /* noop */ }
+  applyTheme();
+  renderThemePicker();
+}
+
+function applyTheme() {
+  const choice = currentThemeChoice();
+  const root = document.documentElement;
+  if (choice === 'auto') delete root.dataset.theme;
+  else root.dataset.theme = choice;
+  const dark = choice === 'dark' || (choice === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  document.querySelector('meta[name=theme-color]').setAttribute('content', dark ? '#1c1720' : '#fbf7f2');
+}
+
+function renderThemePicker() {
+  const choice = currentThemeChoice();
+  document.querySelectorAll('[data-theme-choice]').forEach(b => {
+    const on = b.dataset.themeChoice === choice;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-checked', on ? 'true' : 'false');
+  });
+}
+
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+document.addEventListener('DOMContentLoaded', applyTheme);
