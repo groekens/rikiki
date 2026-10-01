@@ -608,7 +608,6 @@ function validateResults() {
 
   Game.setResults(results);
   syncCloud();
-  if (Game.state.phase === 'finished') archiveGame();
 
   if (Game.state.phase === 'finished') {
     showScreen('scores');
@@ -758,7 +757,6 @@ function saveEditRound() {
   const label = editingRound + 1;
   closeEditRound();
   syncCloud();
-  if (Game.state.phase === 'finished') archiveGame();
   renderScores();
   renderGameScreen();
   showToast(`Manche ${label} corrigée ✓`);
@@ -783,7 +781,6 @@ document.addEventListener('keydown', e => {
 function renderCompte() {
   // Auth state is managed by firebase.js via onAuthStateChanged
   if (window.currentUser && window.loadHistorique) window.loadHistorique();
-  renderAllTimeStats();
   renderThemePicker();
 }
 
@@ -835,7 +832,6 @@ function renderScores() {
   const hint = document.getElementById('score-hint');
 
   if (done === 0) {
-    document.getElementById('game-stats').style.display = 'none';
     tbody.innerHTML = `<tr><td class="score-empty" colspan="${players.length + 1}">Aucune manche terminée pour l'instant</td></tr>`;
     if (hint) hint.style.display = 'none';
     return;
@@ -865,7 +861,6 @@ function renderScores() {
   }
 
   if (hint) hint.style.display = 'block';
-  renderGameStats();
 }
 
 // ─── Settings ─────────────────────────────────────────────────────
@@ -1058,28 +1053,32 @@ async function updateWakeLock() {
 }
 document.addEventListener('visibilitychange', updateWakeLock);
 
-// ─── Joueurs récents ──────────────────────────────────────────────
-const KEY_RECENT = 'rikiki.recentPlayers.v1';
+// ─── Joueurs de la partie précédente ──────────────────────────────
+// On ne garde que la dernière table, dans son ordre : la liste reste courte
+// (8 noms au plus) et l'ordre, qui décide de qui distribue, est conservé.
+const KEY_LAST_TABLE = 'rikiki.lastTable.v1';
 
-function loadRecentPlayers() {
-  try { return JSON.parse(localStorage.getItem(KEY_RECENT) || '[]'); } catch (e) { return []; }
+function loadLastTable() {
+  try { return JSON.parse(localStorage.getItem(KEY_LAST_TABLE) || '[]'); } catch (e) { return []; }
 }
 
 function rememberPlayers(names) {
-  const seen = new Set(names.map(n => n.toLowerCase()));
-  const merged = names.concat(loadRecentPlayers().filter(n => !seen.has(n.toLowerCase()))).slice(0, 12);
-  try { localStorage.setItem(KEY_RECENT, JSON.stringify(merged)); } catch (e) { /* noop */ }
+  try { localStorage.setItem(KEY_LAST_TABLE, JSON.stringify(names)); } catch (e) { /* noop */ }
 }
 
 function renderRecentPlayers() {
   const el = document.getElementById('recent-players');
   if (!el) return;
   const taken = new Set(setupPlayers.map(n => n.toLowerCase()));
-  const recent = loadRecentPlayers().filter(n => !taken.has(n.toLowerCase()));
-  if (!recent.length || setupPlayers.length >= 8) { el.innerHTML = ''; return; }
-  el.innerHTML = `<span class="recent-label">Récents</span>` + recent.map(n =>
-    `<button type="button" class="recent-chip" onclick="addRecentPlayer(this.dataset.name)" data-name="${escapeHtml(n)}">+ ${escapeHtml(n)}</button>`
-  ).join('');
+  const left = loadLastTable().filter(n => !taken.has(n.toLowerCase()));
+  if (!left.length || setupPlayers.length >= 8) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="recent-head">
+      <span class="recent-label">Partie précédente</span>
+      ${left.length > 1 ? `<button type="button" class="recent-all" onclick="addLastTable()">Tous les ajouter</button>` : ''}
+    </div>
+    <div class="recent-chips">${left.map(n =>
+      `<button type="button" class="recent-chip" onclick="addRecentPlayer(this.dataset.name)" data-name="${escapeHtml(n)}">+ ${escapeHtml(n)}</button>`
+    ).join('')}</div>`;
 }
 
 function addRecentPlayer(name) {
@@ -1088,110 +1087,12 @@ function addRecentPlayer(name) {
   document.getElementById('player-input').blur();
 }
 
-// ─── Statistiques ─────────────────────────────────────────────────
-// rounds : [{ a: [annonces par joueur], g: [plis par joueur] }]
-function computeStats(nPlayers, rounds) {
-  return Array.from({ length: nPlayers }, (_, i) => {
-    let ok = 0, streak = 0, best = 0, gap = 0;
-    rounds.forEach(r => {
-      if (r.a[i] === r.g[i]) { ok++; streak++; best = Math.max(best, streak); }
-      else { streak = 0; gap += Math.abs(r.a[i] - r.g[i]); }
-    });
-    return { ok, played: rounds.length, best, gap };
+function addLastTable() {
+  const taken = new Set(setupPlayers.map(n => n.toLowerCase()));
+  loadLastTable().forEach(n => {
+    if (!taken.has(n.toLowerCase()) && setupPlayers.length < 8) setupPlayers.push(n);
   });
-}
-
-function currentRoundsCompact() {
-  const done = Game.completedRounds();
-  return Game.state.rounds.slice(0, done).map(r => ({
-    a: r.announcements.map(x => x.announced),
-    g: r.announcements.map(x => x.got),
-  }));
-}
-
-function renderGameStats() {
-  const card = document.getElementById('game-stats');
-  const body = document.getElementById('game-stats-body');
-  const rounds = currentRoundsCompact();
-  if (!rounds.length) { card.style.display = 'none'; return; }
-  const players = Game.state.players;
-  const stats = computeStats(players.length, rounds);
-
-  const pct = st => Math.round((st.ok / st.played) * 100);
-  const bestPct = Math.max(...stats.map(pct));
-  const bestStreak = Math.max(...stats.map(st => st.best));
-
-  body.innerHTML = `
-    <table class="stats-table">
-      <thead><tr><th></th><th>Réussies</th><th>Série</th><th>Plis ratés</th></tr></thead>
-      <tbody>${players.map((p, i) => {
-        const st = stats[i];
-        return `<tr>
-          <td>${playerCell(p.name, i)}</td>
-          <td class="${pct(st) === bestPct ? 'top' : ''}">${pct(st)}%<small>${st.ok}/${st.played}</small></td>
-          <td class="${st.best === bestStreak && bestStreak > 0 ? 'top' : ''}">${st.best}</td>
-          <td>${st.gap}</td>
-        </tr>`;
-      }).join('')}</tbody>
-    </table>`;
-  card.style.display = 'block';
-}
-
-const KEY_ARCHIVE = 'rikiki.archive.v1';
-
-function loadArchive() {
-  try { return JSON.parse(localStorage.getItem(KEY_ARCHIVE) || '[]'); } catch (e) { return []; }
-}
-
-// Une fiche compacte par partie terminée, sur l'appareil, sans compte.
-function archiveGame() {
-  const st = Game.state;
-  const entry = {
-    id: st.id,
-    at: st.finishedAt || Date.now(),
-    names: st.players.map(p => p.name),
-    totals: st.players.map((_, i) => Game.getTotal(i)),
-    rounds: currentRoundsCompact(),
-  };
-  const list = loadArchive().filter(g => g.id !== entry.id);
-  list.unshift(entry);
-  try { localStorage.setItem(KEY_ARCHIVE, JSON.stringify(list.slice(0, 50))); } catch (e) { /* noop */ }
-}
-
-function renderAllTimeStats() {
-  const el = document.getElementById('alltime-stats');
-  if (!el) return;
-  const games = loadArchive();
-  if (!games.length) { el.innerHTML = '<p class="muted">Termine une partie pour voir apparaître les statistiques.</p>'; return; }
-
-  const byName = new Map();
-  games.forEach(g => {
-    const stats = computeStats(g.names.length, g.rounds);
-    const best = Math.max(...g.totals);
-    g.names.forEach((name, i) => {
-      const key = name.toLowerCase();
-      const acc = byName.get(key) || { name, games: 0, wins: 0, ok: 0, played: 0, best: 0 };
-      acc.games++;
-      if (g.totals[i] === best) acc.wins++;
-      acc.ok += stats[i].ok;
-      acc.played += stats[i].played;
-      acc.best = Math.max(acc.best, g.totals[i]);
-      byName.set(key, acc);
-    });
-  });
-  const rows = [...byName.values()].sort((a, b) => b.wins - a.wins || b.ok / b.played - a.ok / a.played);
-
-  el.innerHTML = `
-    <table class="stats-table">
-      <thead><tr><th></th><th>Parties</th><th>Victoires</th><th>Réussite</th><th>Record</th></tr></thead>
-      <tbody>${rows.map((r, i) => `<tr>
-        <td>${playerCell(r.name, i)}</td>
-        <td>${r.games}</td>
-        <td class="${i === 0 && r.wins > 0 ? 'top' : ''}">${r.wins}</td>
-        <td>${Math.round((r.ok / r.played) * 100)}%</td>
-        <td>${r.best}</td>
-      </tr>`).join('')}</tbody>
-    </table>`;
+  renderSetup();
 }
 
 // ─── Partage du résultat ──────────────────────────────────────────

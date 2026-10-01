@@ -190,10 +190,6 @@
         </div>
         <p class="score-hint" id="score-hint">Touchez une ligne pour corriger la manche.</p>
       </div>
-      <div class="card" id="game-stats" style="display:none;">
-        <h3>Stats de la partie</h3>
-        <div id="game-stats-body"></div>
-      </div>
       <button class="btn btn-secondary" onclick="showScreen('game')" id="back-to-game-btn">Retour à la manche</button>
       <button class="btn btn-end" onclick="confirmEndGame()" style="margin-top:8px;" id="btn-end-scores">Terminer la partie</button>
     </div>
@@ -283,12 +279,6 @@
       </div>
 
       <div class="card" style="margin-top:16px;">
-        <h3>Statistiques des joueurs</h3>
-        <p class="card-hint">Sur les parties terminées sur cet appareil.</p>
-        <div id="alltime-stats"></div>
-      </div>
-
-      <div class="card">
         <h3>Apparence</h3>
         <div class="segmented" id="theme-picker" role="radiogroup" aria-label="Thème">
           <button data-theme-choice="auto" onclick="setTheme('auto')">Auto</button>
@@ -397,8 +387,25 @@
         <li>
           <span class="step-num">2</span>
           <div>
+            <div class="step-title">Touche « En voir plus »</div>
+            <div class="step-text">Sous la rangée d'applications, en bas du menu de partage.</div>
+            <div class="step-illu" aria-hidden="true">
+              <svg viewBox="0 0 220 50" width="100%" height="50">
+                <rect x="2" y="4" width="216" height="42" rx="10" class="illu-sheet"/>
+                <circle cx="30" cy="25" r="13" fill="none" class="illu-ring"/>
+                <circle cx="24" cy="25" r="1.8" class="illu-dot"/>
+                <circle cx="30" cy="25" r="1.8" class="illu-dot"/>
+                <circle cx="36" cy="25" r="1.8" class="illu-dot"/>
+                <text x="54" y="30" class="illu-text illu-strong">En voir plus</text>
+              </svg>
+            </div>
+          </div>
+        </li>
+        <li>
+          <span class="step-num">3</span>
+          <div>
             <div class="step-title">Choisis « Sur l'écran d'accueil »</div>
-            <div class="step-text">Fais défiler le menu si l'option n'est pas visible.</div>
+            <div class="step-text">Dans la liste d'actions qui s'ouvre, fais défiler si besoin.</div>
             <div class="step-illu" aria-hidden="true">
               <svg viewBox="0 0 220 50" width="100%" height="50">
                 <rect x="2" y="4" width="216" height="42" rx="10" class="illu-sheet"/>
@@ -412,7 +419,7 @@
           </div>
         </li>
         <li>
-          <span class="step-num">3</span>
+          <span class="step-num">4</span>
           <div>
             <div class="step-title">Appuie sur « Ajouter »</div>
             <div class="step-text">L'icône Rikiki apparaît sur ton écran d'accueil.</div>
