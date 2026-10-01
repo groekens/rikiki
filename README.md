@@ -4,10 +4,13 @@ Application PWA pour compter les points au jeu de cartes Rikiki.
 
 ## Fonctionnalités
 
-- Saisie des joueurs dans l'ordre (sens des aiguilles d'une montre)
+- Saisie des joueurs dans l'ordre (sens des aiguilles d'une montre), avec
+  ajout rapide des joueurs de la partie précédente (un par un ou tous, ordre conservé)
 - Calcul automatique des manches (montée + descente selon nb de joueurs)
-- Gestion des annonces avec détection de la somme interdite
-- Suivi des plis réalisés et calcul automatique des points
+- Saisie des annonces et des plis par pastilles (un tap, sans clavier)
+- Le dernier à annoncer voit le nombre qu'il ne peut pas dire (pastille barrée)
+- Plis du dernier joueur déduits automatiquement du total, toujours modifiables
+- Calcul automatique des points
 - Tableau des scores en direct
 - Rotation automatique du dealer et du premier à parler
 - Règles du jeu intégrées
@@ -21,6 +24,10 @@ Application PWA pour compter les points au jeu de cartes Rikiki.
   saisie de la manche à gauche et scores à droite.
 - **Compte Google** : historique des parties terminées et reprise des parties
   en cours depuis un autre appareil.
+- Partage du résultat en image (classement, lien rikiki.nuxo.be) via la feuille
+  de partage du téléphone, téléchargement sur ordinateur
+- Écran maintenu allumé pendant une partie en cours (Wake Lock API)
+- Thème clair, sombre ou automatique (onglet Compte)
 - Mode hors-ligne (Service Worker)
 - Installable sur mobile (PWA), avec bannière d'invitation sur iOS et Android
   (masquée 30 jours après un refus, jamais affichée une fois l'app installée)
@@ -41,6 +48,7 @@ public n'est pas déclaré.
 | Où | Quoi | Quand |
 |----|------|-------|
 | `localStorage` | Partie en cours + paramètres de score | À chaque action |
+| `localStorage` | Joueurs de la dernière partie, thème, refus de la bannière | Au lancement d'une partie / au choix |
 | Firestore | Une fiche par partie (`users/{uid}/parties/{gameId}`) | À chaque fin de manche, si connecté |
 
 L'état complet est sérialisé dans le champ `etatJson`, ce qui permet de

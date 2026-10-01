@@ -1107,7 +1107,7 @@ footer {
   }
 }
 
-/* ── PROTOTYPE : saisie par pastilles ────────────────────────────── */
+/* ── saisie par pastilles ────────────────────────────── */
 .pick-list { display: flex; flex-direction: column; }
 .pick-row {
   padding: 10px 0 12px;
@@ -1196,7 +1196,7 @@ footer {
 .results-total.ok { background: var(--green-soft); color: var(--green); }
 .results-total.ko { background: var(--red-soft); color: var(--red); }
 
-/* ── PROTOTYPE : joueurs récents ─────────────────────────────────── */
+/* ── joueurs récents ─────────────────────────────────── */
 .recent { margin-top: 14px; }
 .recent:empty { display: none; }
 .recent-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
@@ -1225,7 +1225,7 @@ footer {
 }
 .recent-chip:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-dark); }
 
-/* ── PROTOTYPE : sélecteur de thème ──────────────────────────────── */
+/* ── sélecteur de thème ──────────────────────────────── */
 .segmented {
   display: flex;
   gap: 4px;
