@@ -14,6 +14,7 @@ function splitApplies(id) {
 
 function showScreen(id) {
   if (!SCREENS.includes(id)) return;
+  if (id !== activeScreen) window.scrollTo(0, 0);
   activeScreen = id;
   const split = splitApplies(id);
   document.body.classList.toggle('split', split);
@@ -148,32 +149,88 @@ function enableGameNav() {
   document.getElementById('round-header-area').style.display = 'block';
 }
 
+// ─── Animations ───────────────────────────────────────────────────
+// Relance une animation CSS sur un élément déjà affiché : retirer la classe,
+// forcer un reflow, la remettre.
+function replay(el, cls) {
+  if (!el) return;
+  el.classList.remove(cls);
+  void el.offsetWidth;
+  el.classList.add(cls);
+}
+
+function shake(el) { replay(el, 'shake'); }
+
+const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// Pluie de couleurs de cartes sur l'écran du vainqueur.
+function suitBurst() {
+  if (reducedMotion()) return;
+  const host = document.getElementById('finished-area');
+  const suits = ['♠', '♥', '♣', '♦'];
+  for (let i = 0; i < 28; i++) {
+    const s = document.createElement('span');
+    const suit = suits[i % 4];
+    s.className = 'confetti' + (suit === '♥' || suit === '♦' ? ' r' : '');
+    s.textContent = suit;
+    s.style.left = (Math.random() * 100) + '%';
+    s.style.animationDelay = (Math.random() * 0.6) + 's';
+    s.style.animationDuration = (1.6 + Math.random() * 1.2) + 's';
+    s.style.setProperty('--drift', ((Math.random() - 0.5) * 80) + 'px');
+    s.style.setProperty('--spin', ((Math.random() - 0.5) * 540) + 'deg');
+    s.style.fontSize = (14 + Math.random() * 14) + 'px';
+    host.appendChild(s);
+    setTimeout(() => s.remove(), 3200);
+  }
+}
+
+// ─── Player identity ──────────────────────────────────────────────
+// Une couleur par siège, la même partout (setup, manche, scores) : on repère
+// un joueur d'un coup d'oeil au lieu de relire les noms à chaque manche.
+const PLAYER_COLORS = 8;
+
+function avatar(name, idx, size) {
+  const cls = size === 'sm' ? 'avatar avatar-sm' : 'avatar';
+  return `<div class="${cls} p${idx % PLAYER_COLORS}">${escapeHtml(name[0].toUpperCase())}</div>`;
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
 // ─── Setup screen ─────────────────────────────────────────────────
 let setupPlayers = [];
+let justAdded = -1;
 
 function renderSetup() {
   const list = document.getElementById('player-list');
   list.innerHTML = '';
   setupPlayers.forEach((name, i) => {
     const row = document.createElement('div');
-    row.className = 'player-row';
+    row.className = 'player-row' + (i === justAdded ? ' enter' : '');
     row.innerHTML = `
-      <div class="avatar">${name[0].toUpperCase()}</div>
-      <span style="flex:1;font-size:15px;">${name}</span>
-      ${i === 0 ? '<span class="badge badge-purple">1er dealer</span>' : ''}
-      <button class="btn-sm danger" onclick="removePlayer(${i})">✕</button>`;
+      ${avatar(name, i)}
+      <span class="player-name">${escapeHtml(name)}</span>
+      ${i === 0 ? '<span class="badge badge-accent">1er donneur</span>' : ''}
+      <button class="icon-btn" onclick="removePlayer(${i})" aria-label="Retirer ${escapeHtml(name)}">✕</button>`;
     list.appendChild(row);
   });
+  justAdded = -1;
   updateRoundPreview();
 }
 
 function updateRoundPreview() {
   const n = setupPlayers.length;
   const el = document.getElementById('round-preview');
-  if (n < 2) { el.innerHTML = '<span style="color:var(--text3);font-size:13px;">Ajoutez au moins 2 joueurs</span>'; return; }
+  if (n < 2) { el.innerHTML = '<p class="muted">Ajoutez au moins 2 joueurs</p>'; return; }
   const maxCards = Math.floor(52 / n);
   const total = maxCards * 2 - 1;
-  el.innerHTML = `<p style="font-size:14px;color:var(--text2);">${n} joueurs · <strong>${total} manches</strong> · max ${maxCards} cartes par manche</p>`;
+  el.innerHTML = `
+    <div class="stat-row">
+      <div class="stat"><span class="stat-value">${n}</span><span class="stat-label">joueurs</span></div>
+      <div class="stat"><span class="stat-value">${total}</span><span class="stat-label">manches</span></div>
+      <div class="stat"><span class="stat-value">${maxCards}</span><span class="stat-label">cartes max</span></div>
+    </div>`;
 }
 
 function addPlayer() {
@@ -181,8 +238,9 @@ function addPlayer() {
   const name = inp.value.trim();
   if (!name) return;
   if (setupPlayers.length >= 8) { showToast('Maximum 8 joueurs'); return; }
-  if (setupPlayers.map(p => p.toLowerCase()).includes(name.toLowerCase())) { showToast('Nom déjà utilisé'); return; }
+  if (setupPlayers.map(p => p.toLowerCase()).includes(name.toLowerCase())) { showToast('Nom déjà utilisé'); shake(inp); return; }
   setupPlayers.push(name);
+  justAdded = setupPlayers.length - 1;
   inp.value = '';
   inp.focus();
   renderSetup();
@@ -206,6 +264,8 @@ function startGame() {
 }
 
 // ─── Game screen ──────────────────────────────────────────────────
+let lastDealtRound = null;
+
 function renderGameScreen() {
   if (!Game.hasActiveGame()) return;
   if (Game.state.phase === 'finished') { renderFinished(); return; }
@@ -218,10 +278,16 @@ function renderGameScreen() {
   const total = Game.state.totalRounds;
   const players = Game.state.players;
 
-  // Round header
+  // Round header. La nouvelle manche "se distribue" : seulement quand elle
+  // change, pas à chaque retour sur l'écran.
+  if (lastDealtRound !== `${Game.state.id}:${ri}`) {
+    lastDealtRound = `${Game.state.id}:${ri}`;
+    replay(document.querySelector('.round-header'), 'deal');
+  }
   document.getElementById('round-title').textContent = `Manche ${ri + 1}`;
   document.getElementById('round-sub').textContent = `${r.cards} carte${r.cards > 1 ? 's' : ''}`;
   document.getElementById('round-badge').textContent = `${ri + 1} / ${total}`;
+  document.getElementById('round-progress').style.width = `${(ri / total) * 100}%`;
 
   // Show "start descending" button only if still ascending and not already triggered
   const btnDescend = document.getElementById('btn-descend');
@@ -236,8 +302,10 @@ function renderGameScreen() {
   if (btnFix) btnFix.style.display = Game.completedRounds() > 0 ? 'block' : 'none';
 
   // Dealer / first player info
-  document.getElementById('info-dealer').textContent = players[r.dealer].name;
-  document.getElementById('info-first').textContent = players[r.firstPlayer].name;
+  document.getElementById('info-dealer').innerHTML =
+    `${avatar(players[r.dealer].name, r.dealer, 'sm')}<span>${escapeHtml(players[r.dealer].name)}</span>`;
+  document.getElementById('info-first').innerHTML =
+    `${avatar(players[r.firstPlayer].name, r.firstPlayer, 'sm')}<span>${escapeHtml(players[r.firstPlayer].name)}</span>`;
 
   // Phase
   if (Game.state.phase === 'announce') {
@@ -253,6 +321,7 @@ function confirmDescend() {
   Game.triggerDescend();
   document.getElementById('btn-descend').style.display = 'none';
   document.getElementById('round-badge').textContent = `${Game.state.currentRound + 1} / ${Game.state.totalRounds}`;
+  document.getElementById('round-progress').style.width = `${(Game.state.currentRound / Game.state.totalRounds) * 100}%`;
   syncCloud();
   showToast('Descente amorcée, partie raccourcie ✓');
 }
@@ -283,16 +352,20 @@ function renderAnnouncePhase() {
     tr.dataset.playerIdx = pi;
     const prefill = r.announcements[pi].announced;
     tr.innerHTML = `
-      <td>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <div class="avatar" style="width:28px;height:28px;font-size:11px;">${players[pi].name[0].toUpperCase()}</div>
-          <span>${players[pi].name}</span>
-        </div>
-      </td>
+      <td>${playerCell(players[pi].name, pi)}</td>
       <td><input type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="${r.cards}" id="ann-${pi}" placeholder="0" value="${prefill ?? ''}" oninput="checkAnnounceSum()"></td>`;
     tbody.appendChild(tr);
   });
+  // Le dernier à parler qui prend la main suffit à faire apparaître l'indice,
+  // même si les autres ont laissé leur case vide pour "0".
+  const lastInput = document.getElementById('ann-' + order[order.length - 1]);
+  lastInput.addEventListener('focus', () => { lastInputFocused = true; checkAnnounceSum(); });
+  lastInputFocused = false;
   checkAnnounceSum();
+}
+
+function playerCell(name, idx) {
+  return `<div class="player-cell">${avatar(name, idx, 'sm')}<span>${escapeHtml(name)}</span></div>`;
 }
 
 function getAnnounceVal(pi) {
@@ -300,22 +373,48 @@ function getAnnounceVal(pi) {
   return (raw === '' || raw === undefined) ? 0 : parseInt(raw);
 }
 
-function checkAnnounceSum() {
+// La règle "la somme ne peut pas égaler le nombre de plis" ne contraint que
+// le dernier à parler. Plutôt que d'expliquer la règle, on lui donne
+// directement le nombre qu'il n'a pas le droit de dire.
+let lastInputFocused = false;
+
+function forbiddenForLast() {
   const r = Game.currentRoundData();
   const order = Game.getAnnounceOrder();
-  const vals = order.map(pi => {
-    const raw = document.getElementById('ann-' + pi)?.value.trim();
-    return (raw === '' || raw === undefined) ? 0 : parseInt(raw);
-  });
-  const sum = vals.reduce((s, v) => s + (isNaN(v) ? 0 : v), 0);
-  const warn = document.getElementById('warn-announce');
+  const others = order.slice(0, -1).reduce((s, pi) => s + (getAnnounceVal(pi) || 0), 0);
+  return r.cards - others;
+}
 
-  if (sum === r.cards) {
-    warn.textContent = `⚠ Somme des annonces (${sum}) = nombre de plis (${r.cards}), interdit ! Modifiez au moins une annonce.`;
-    warn.classList.add('visible');
-  } else {
-    warn.classList.remove('visible');
+function checkAnnounceSum() {
+  const order = Game.getAnnounceOrder();
+  const lastPi = order[order.length - 1];
+  const lastName = Game.state.players[lastPi].name;
+  const othersFilled = order.slice(0, -1).every(pi => document.getElementById('ann-' + pi)?.value.trim() !== '');
+  const hint = document.getElementById('last-hint');
+  const lastInput = document.getElementById('ann-' + lastPi);
+
+  if (!othersFilled && !lastInputFocused) {
+    hint.classList.remove('visible', 'blocked');
+    lastInput.classList.remove('is-forbidden');
+    return;
   }
+
+  const forbidden = forbiddenForLast();
+  const lastRaw = lastInput.value.trim();
+  const blocked = forbidden >= 0 && lastRaw !== '' && parseInt(lastRaw) === forbidden;
+  const text = forbidden < 0
+    ? `<strong>${escapeHtml(lastName)}</strong> peut annoncer n'importe quel nombre`
+    : `<strong>${escapeHtml(lastName)}</strong> ne peut pas annoncer <span class="hint-num">${forbidden}</span>`;
+
+  // Ne réécrire que si le contenu change : sinon l'animation du chiffre
+  // repartirait à chaque frappe.
+  if (hint.dataset.text !== text) {
+    hint.innerHTML = `${avatar(lastName, lastPi, 'sm')}<span>${text}</span>`;
+    hint.dataset.text = text;
+  }
+  hint.classList.add('visible');
+  hint.classList.toggle('blocked', blocked);
+  lastInput.classList.toggle('is-forbidden', blocked);
 }
 
 function validateAnnouncements() {
@@ -330,7 +429,13 @@ function validateAnnouncements() {
   });
   if (!valid) { showToast('Valeurs invalides'); return; }
   const sum = announced.reduce((s, v) => s + v, 0);
-  if (sum === r.cards) { showToast('Somme interdite ! Modifiez une annonce'); return; }
+  if (sum === r.cards) {
+    const order2 = Game.getAnnounceOrder();
+    const lastPi = order2[order2.length - 1];
+    showToast(`${Game.state.players[lastPi].name} ne peut pas annoncer ${forbiddenForLast()}`);
+    shake(document.getElementById('ann-' + lastPi));
+    return;
+  }
   Game.setAnnouncements(announced);
   renderResultPhase();
 }
@@ -348,29 +453,23 @@ function renderResultPhase() {
     const ann = r.announcements[pi].announced;
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <div class="avatar" style="width:28px;height:28px;font-size:11px;">${p.name[0].toUpperCase()}</div>
-          <span>${p.name}</span>
-        </div>
-      </td>
+      <td>${playerCell(p.name, pi)}</td>
       <td><span class="badge badge-neutral">${ann}</span></td>
       <td><input type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="${r.cards}" id="res-${pi}" placeholder="0" oninput="previewPoints(${pi})"></td>
-      <td id="pts-preview-${pi}" style="font-size:13px;color:var(--text3);">—</td>`;
+      <td id="pts-preview-${pi}" class="pts-cell">·</td>`;
     tbody.appendChild(tr);
   });
 }
 
-function pointsFor(announced, got) {
-  return announced === got
-    ? Game.settings.pointsOnSuccess + got * Game.settings.pointsPerTrick
-    : Game.settings.pointsOnFailure;
+function formatPts(pts) {
+  // Vrai signe moins : le trait d'union paraît chétif à côté du +.
+  return pts > 0 ? `+${pts}` : pts < 0 ? `\u2212${-pts}` : '0';
 }
 
 function pointsBadge(announced, got) {
-  const pts = pointsFor(announced, got);
+  const pts = Game.pointsFor(announced, got);
   const ok = announced === got;
-  return `<span class="badge ${ok ? 'badge-green' : 'badge-red'}">${pts > 0 ? '+' : ''}${pts}</span>`;
+  return `<span class="badge ${ok ? 'badge-green' : 'badge-red'}">${formatPts(pts)}</span>`;
 }
 
 function previewPoints(pi) {
@@ -379,8 +478,9 @@ function previewPoints(pi) {
   const raw = document.getElementById('res-' + pi)?.value.trim();
   const v = (raw === '' || raw === undefined) ? 0 : parseInt(raw);
   const el = document.getElementById('pts-preview-' + pi);
-  if (isNaN(v)) { el.innerHTML = '—'; return; }
+  if (isNaN(v)) { el.innerHTML = '·'; return; }
   el.innerHTML = pointsBadge(ann, v);
+  replay(el.firstElementChild, 'pop');
 }
 
 function validateResults() {
@@ -409,6 +509,8 @@ function validateResults() {
   }
 }
 
+let celebratedGame = null;
+
 function renderFinished() {
   document.getElementById('phase-announce').style.display = 'none';
   document.getElementById('phase-result').style.display = 'none';
@@ -418,6 +520,10 @@ function renderFinished() {
   document.getElementById('finished-area').style.display = 'block';
   document.getElementById('winner-name').textContent = winner.name;
   document.getElementById('winner-pts').textContent = winner.total + ' pts';
+  if (celebratedGame !== Game.state.id) {
+    celebratedGame = Game.state.id;
+    suitBurst();
+  }
 }
 
 function confirmEndGame() {
@@ -494,15 +600,10 @@ function openEditRound(idx) {
     const a = r.announcements[pi];
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <div class="avatar" style="width:28px;height:28px;font-size:11px;">${players[pi].name[0].toUpperCase()}</div>
-          <span>${players[pi].name}</span>
-        </div>
-      </td>
+      <td>${playerCell(players[pi].name, pi)}</td>
       <td><input type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="${r.cards}" id="edit-ann-${pi}" value="${a.announced ?? 0}" oninput="refreshEditPreview()"></td>
       <td><input type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="${r.cards}" id="edit-got-${pi}" value="${a.got ?? 0}" oninput="refreshEditPreview()"></td>
-      <td id="edit-pts-${pi}" style="font-size:13px;color:var(--text3);">—</td>`;
+      <td id="edit-pts-${pi}" class="pts-cell">·</td>`;
     tbody.appendChild(tr);
   });
 
@@ -532,7 +633,7 @@ function refreshEditPreview() {
   const warn = document.getElementById('edit-warn');
   const err = Game.checkRoundInput(editingRound, announced, got);
   if (err) {
-    warn.textContent = '⚠ ' + err;
+    warn.textContent = err;
     warn.classList.add('visible');
   } else {
     warn.classList.remove('visible');
@@ -587,6 +688,8 @@ window.applyCloudGame = function (data) {
 };
 
 // ─── Scores ───────────────────────────────────────────────────────
+let lastScoredRounds = null;
+
 function renderScores() {
   const state = Game.state;
   if (!state.players.length) return;
@@ -608,9 +711,9 @@ function renderScores() {
   let head = '<th class="col-round">Manche</th>';
   players.forEach((p, i) => {
     const leads = done > 0 && totals[i] === best;
-    head += `<th class="col-player${leads ? ' leads' : ''}">
-      <span class="ph-name">${p.name}</span>
-      <span class="ph-total">${totals[i]}</span>
+    head += `<th class="col-player p${i % PLAYER_COLORS}${leads ? ' leads' : ''}">
+      <span class="ph-name">${escapeHtml(p.name)}</span>
+      <span class="ph-total">${formatPts(totals[i]).replace('+', '')}</span>
     </th>`;
   });
   thead.innerHTML = head;
@@ -624,20 +727,24 @@ function renderScores() {
     return;
   }
 
+  // La manche qui vient d'être validée s'illumine une fois.
+  const fresh = lastScoredRounds !== null && lastScoredRounds.id === state.id && done > lastScoredRounds.done ? done - 1 : -1;
+  lastScoredRounds = { id: state.id, done };
+
   for (let m = 0; m < done; m++) {
     const r = state.rounds[m];
     const tr = document.createElement('tr');
-    tr.className = 'round-row';
+    tr.className = 'round-row' + (m === fresh ? ' fresh' : '');
     tr.title = `Corriger la manche ${m + 1}`;
     tr.setAttribute('onclick', `openEditRound(${m})`);
 
     let row = `<td class="col-round"><span class="rn">M${m + 1}</span><span class="rc">${r.cards}c</span></td>`;
     players.forEach((p, i) => {
       const pts = p.scores[m];
-      if (pts === undefined || pts === null) { row += '<td>—</td>'; return; }
+      if (pts === undefined || pts === null) { row += '<td class="pts-cell">·</td>'; return; }
       const a = r.announcements[i];
       const ok = a && a.announced === a.got;
-      row += `<td><span class="badge ${ok ? 'badge-green' : 'badge-red'}">${pts > 0 ? '+' : ''}${pts}</span></td>`;
+      row += `<td><span class="badge ${ok ? 'badge-green' : 'badge-red'}">${formatPts(pts)}</span></td>`;
     });
     tr.innerHTML = row;
     tbody.appendChild(tr);
@@ -650,26 +757,66 @@ function renderScores() {
 function renderSettings() {
   document.getElementById('set-success').value = Game.settings.pointsOnSuccess;
   document.getElementById('set-trick').value = Game.settings.pointsPerTrick;
-  document.getElementById('set-failure').value = Game.settings.pointsOnFailure;
+  document.getElementById('set-penalty').value = Game.settings.penaltyPerTrick;
+  renderSettingsExamples();
+}
+
+// Les exemples suivent les valeurs saisies : c'est ce qui lève le doute
+// "faut-il taper 2 ou -2 ?" mieux que n'importe quelle explication.
+function renderSettingsExamples() {
+  const s = parseInt(document.getElementById('set-success').value) || 0;
+  const t = parseInt(document.getElementById('set-trick').value) || 0;
+  const p = Math.abs(parseInt(document.getElementById('set-penalty').value) || 0);
+  document.getElementById('ex-success').textContent =
+    `Annonce 3, fait 3 : ${s} + 3 × ${t} = ${formatPts(s + 3 * t)} pts`;
+  document.getElementById('ex-penalty').textContent = p === 0
+    ? 'Pas de pénalité : une annonce ratée rapporte 0 pt'
+    : `Annonce 4, fait 1 : 3 plis d'écart × ${p} = ${formatPts(-3 * p)} pts`;
 }
 
 function saveSettings() {
   const s = parseInt(document.getElementById('set-success').value);
   const t = parseInt(document.getElementById('set-trick').value);
-  const f = parseInt(document.getElementById('set-failure').value);
-  if (isNaN(s) || isNaN(t) || isNaN(f)) { showToast('Valeurs invalides'); return; }
+  const p = parseInt(document.getElementById('set-penalty').value);
+  if (isNaN(s) || isNaN(t) || isNaN(p) || s < 0 || t < 0) { showToast('Valeurs invalides'); renderSettings(); return; }
   Game.settings.pointsOnSuccess = s;
   Game.settings.pointsPerTrick = t;
-  Game.settings.pointsOnFailure = f;
+  Game.settings.penaltyPerTrick = Math.abs(p);
   Storage.saveSettings(Game.settings);
   persistLocal();
-  showToast('Paramètres sauvegardés ✓');
+  renderSettings();
+  showToast('Paramètres enregistrés ✓');
 }
+
+// Aucun champ numérique de l'app n'attend de signe, de décimale ni
+// d'exposant : on bloque ces touches plutôt que de corriger après coup.
+document.addEventListener('keydown', e => {
+  if (e.target.matches && e.target.matches('input[type=number]') && ['-', '+', 'e', 'E', '.', ','].includes(e.key)) {
+    e.preventDefault();
+  }
+});
+// Filet pour le collage et les claviers qui contournent keydown.
+document.addEventListener('input', e => {
+  const el = e.target;
+  if (el.matches && el.matches('input[type=number]') && el.value !== '' && parseInt(el.value) < 0) {
+    el.value = Math.abs(parseInt(el.value));
+  }
+}, true);
 
 // ─── Init ──────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   const savedSettings = Storage.loadSettings();
-  if (savedSettings) Object.assign(Game.settings, savedSettings);
+  if (savedSettings) {
+    // L'ancien réglage "points si échec" n'a pas d'équivalent : l'échec se
+    // compte désormais au pli d'écart, avec la valeur par défaut.
+    delete savedSettings.pointsOnFailure;
+    Object.assign(Game.settings, savedSettings);
+  }
+  ['set-success', 'set-trick', 'set-penalty'].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', renderSettingsExamples);
+    el.addEventListener('change', saveSettings);
+  });
 
   document.getElementById('player-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') addPlayer();
@@ -688,3 +835,89 @@ window.addEventListener('pagehide', persistLocal);
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') persistLocal();
 });
+
+// ─── PWA install prompt ───────────────────────────────────────────
+// Repris de trashometre : bannière discrète sur mobile tant que l'app n'est
+// pas installée, masquée 30 jours après un refus.
+const INSTALL_DISMISS_KEY = 'rikiki.install.dismissedUntil';
+let deferredInstallPrompt = null;  // rempli par `beforeinstallprompt` (Chrome Android)
+
+function isIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+function isStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches
+    || window.navigator.standalone === true;
+}
+
+function isBannerDismissed() {
+  try {
+    return Date.now() < parseInt(localStorage.getItem(INSTALL_DISMISS_KEY) || '0', 10);
+  } catch (e) {
+    return false;
+  }
+}
+
+function rememberDismissal(ms) {
+  try { localStorage.setItem(INSTALL_DISMISS_KEY, String(Date.now() + ms)); } catch (e) { /* noop */ }
+}
+
+function maybeShowInstallBanner() {
+  if (isStandalone() || isBannerDismissed()) return;
+  const isMobile = isIOS() || /Android/i.test(navigator.userAgent);
+  if (!isMobile) return;
+  setTimeout(() => document.body.classList.add('show-install-banner'), 1200);
+}
+
+function dismissInstallBanner() {
+  document.body.classList.remove('show-install-banner');
+  rememberDismissal(30 * 24 * 60 * 60 * 1000);
+}
+
+function openInstallGuide() {
+  const ios = isIOS();
+  document.getElementById('install-ios').style.display = ios ? 'block' : 'none';
+  document.getElementById('install-android').style.display = ios ? 'none' : 'block';
+  document.getElementById('native-install-btn').style.display = (!ios && deferredInstallPrompt) ? 'block' : 'none';
+  document.getElementById('install-modal').style.display = 'flex';
+  document.body.classList.remove('show-install-banner');
+}
+
+function closeInstallGuide() {
+  document.getElementById('install-modal').style.display = 'none';
+}
+
+function onInstallBackdrop(e) {
+  if (e.target.id === 'install-modal') closeInstallGuide();
+}
+
+async function triggerNativeInstall() {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  try {
+    const { outcome } = await deferredInstallPrompt.userChoice;
+    if (outcome === 'accepted') {
+      closeInstallGuide();
+      rememberDismissal(10 * 365 * 24 * 60 * 60 * 1000);
+    }
+  } catch (e) { /* noop */ }
+  deferredInstallPrompt = null;
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeInstallGuide();
+});
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+});
+
+window.addEventListener('appinstalled', () => {
+  document.body.classList.remove('show-install-banner');
+  deferredInstallPrompt = null;
+});
+
+document.addEventListener('DOMContentLoaded', maybeShowInstallBanner);

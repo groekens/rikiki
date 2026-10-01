@@ -1,4 +1,4 @@
-const CACHE = 'rikiki-v12';
+const CACHE = 'rikiki-v13';
 
 // Le code de l'app. Servi réseau d'abord pour qu'une mise en ligne arrive
 // sans dépendre d'un bump de version, avec repli sur le cache hors ligne.
@@ -15,6 +15,7 @@ const SHELL = [
 
 // Ne change quasiment jamais: cache d'abord, c'est instantané.
 const STATIC = [
+  './logo.png',
   './images/android-chrome-192x192.png',
   './images/android-chrome-512x512.png',
   './images/apple-touch-icon.png',

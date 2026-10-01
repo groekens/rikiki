@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Rikiki</title>
   <meta name="description" content="Compteur de points pour le jeu de cartes Rikiki">
-  <meta name="theme-color" content="#0f0e17">
+  <meta name="theme-color" content="#fbf7f2">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Rikiki">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/x-icon" href="images/favicon.ico">
@@ -25,18 +25,21 @@
     <button class="nav-btn" id="nav-game" onclick="showScreen('game')" disabled>Manche</button>
     <button class="nav-btn" id="nav-scores" onclick="showScreen('scores')" disabled>Scores</button>
     <button class="nav-btn" id="nav-rules" onclick="showScreen('rules')">Règles</button>
-    <button class="nav-btn" id="nav-compte" onclick="showScreen('compte')">👤</button>
+    <button class="nav-btn nav-btn-icon" id="nav-compte" onclick="showScreen('compte')" aria-label="Compte">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+    </button>
   </nav>
 
   <div class="screens-wrap" id="screens-wrap">
 
   <!-- ── SETUP SCREEN ── -->
   <div class="screen active" id="screen-setup">
-    <div style="padding-top:8px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-        <h1>Rikiki</h1>
-        <span class="badge badge-amber" style="font-size:13px;">Nouvelle partie</span>
-      </div>
+    <div>
+      <header class="brand">
+        <img class="brand-logo" src="logo.png" alt="Rikiki" width="557" height="153">
+        <p class="brand-tag">Le compteur de points, sans papier ni crayon</p>
+        <div class="brand-suits" aria-hidden="true"><span>♠</span><span class="r">♥</span><span>♣</span><span class="r">♦</span></div>
+      </header>
 
       <!-- Resume banner (a game is saved and unfinished) -->
       <div class="card resume-card" id="resume-card" style="display:none;">
@@ -51,45 +54,49 @@
 
       <div class="card">
         <h3>Joueurs</h3>
-        <p style="font-size:13px;color:var(--text3);margin-bottom:12px;">Dans le sens des aiguilles d'une montre · premier = 1er dealer</p>
+        <p class="card-hint">Dans le sens des aiguilles d'une montre. Le premier distribue en premier.</p>
         <div id="player-list"></div>
-        <div style="display:flex;gap:8px;margin-top:12px;">
-          <input type="text" id="player-input" placeholder="Nom du joueur…" style="flex:1;" maxlength="20">
-          <button class="btn-sm" onclick="addPlayer()" style="flex-shrink:0;">+ Ajouter</button>
+        <div class="add-row">
+          <input type="text" id="player-input" placeholder="Nom du joueur" maxlength="20" autocomplete="off" enterkeyhint="done">
+          <button class="btn-add" onclick="addPlayer()">Ajouter</button>
         </div>
       </div>
 
       <div class="card">
         <h3>Manches</h3>
-        <div id="round-preview"><span style="color:var(--text3);font-size:13px;">Ajoutez au moins 2 joueurs</span></div>
+        <div id="round-preview"><p class="muted">Ajoutez au moins 2 joueurs</p></div>
       </div>
 
       <!-- Settings inline -->
       <div class="card">
-        <h3>Paramètres de score</h3>
-        <div class="setting-row">
-          <div>
-            <div class="setting-label">Points si réussite</div>
-            <div class="setting-desc">Points fixes + points par pli</div>
+        <h3>Barème</h3>
+        <div class="setting">
+          <div class="setting-head">
+            <span class="setting-dot ok" aria-hidden="true"></span>
+            <span class="setting-label">Annonce réussie</span>
           </div>
-          <div style="display:flex;gap:6px;align-items:center;">
-            <input type="number" id="set-success" min="0" max="100" value="10" style="width:60px;">
-            <span style="color:var(--text3);font-size:13px;">+</span>
-            <input type="number" id="set-trick" min="0" max="10" value="1" style="width:50px;">
-            <span style="color:var(--text3);font-size:13px;">/pli</span>
+          <div class="setting-inputs">
+            <label class="num-field"><input type="number" id="set-success" inputmode="numeric" min="0" max="100" value="10" aria-label="Points fixes si réussite"><span>pts</span></label>
+            <span class="op">+</span>
+            <label class="num-field"><input type="number" id="set-trick" inputmode="numeric" min="0" max="10" value="1" aria-label="Points par pli réalisé"><span>par pli</span></label>
           </div>
+          <p class="setting-example" id="ex-success"></p>
         </div>
-        <div class="setting-row">
-          <div>
-            <div class="setting-label">Points si échec</div>
-            <div class="setting-desc">0 = pas de pénalité</div>
+        <div class="setting">
+          <div class="setting-head">
+            <span class="setting-dot ko" aria-hidden="true"></span>
+            <span class="setting-label">Annonce ratée</span>
           </div>
-          <input type="number" id="set-failure" min="-100" max="0" value="0" style="width:70px;">
+          <div class="setting-inputs">
+            <span class="op op-minus">&minus;</span>
+            <label class="num-field"><input type="number" id="set-penalty" inputmode="numeric" min="0" max="50" value="2" aria-label="Points retirés par pli d'écart"><span>pts par pli d'écart</span></label>
+          </div>
+          <p class="setting-desc">Points retirés pour chaque pli d'écart avec l'annonce, qu'il y en ait trop ou pas assez. 0 = pas de pénalité.</p>
+          <p class="setting-example" id="ex-penalty"></p>
         </div>
-        <button class="btn-sm" onclick="saveSettings()" style="margin-top:10px;">Sauvegarder</button>
       </div>
 
-      <button class="btn btn-primary" onclick="startGame()">Commencer la partie →</button>
+      <button class="btn btn-primary btn-lg" onclick="startGame()">Commencer la partie</button>
       <button class="btn btn-end" id="btn-end-setup" onclick="confirmEndGame()" style="display:none;margin-top:8px;">Terminer la partie</button>
     </div>
   </div>
@@ -99,29 +106,33 @@
     <div id="finished-area" style="display:none;" class="winner-banner">
       <div class="crown">🏆</div>
       <div class="winner-name" id="winner-name"></div>
-      <div id="winner-pts" style="font-size:18px;color:var(--text2);font-family:'Kreon',serif;font-weight:600;"></div>
-      <p style="font-size:14px;color:var(--text3);margin-top:8px;">Consultez le tableau des scores</p>
-      <button class="btn btn-secondary" onclick="showScreen('scores')" style="margin-top:16px;">Voir les scores →</button>
+      <div class="winner-pts" id="winner-pts"></div>
+      <button class="btn btn-primary" onclick="showScreen('scores')" style="margin-top:24px;">Voir les scores</button>
       <button class="btn btn-secondary" onclick="resetGame()" style="margin-top:8px;">Nouvelle partie</button>
     </div>
 
     <div id="round-header-area">
 
       <div class="round-header">
-        <div>
-          <div class="round-title" id="round-title">Manche 1</div>
-          <div class="round-sub" id="round-sub"></div>
+        <div class="round-top">
+          <div>
+            <div class="round-title" id="round-title">Manche 1</div>
+            <div class="round-sub" id="round-sub"></div>
+          </div>
+          <span class="round-badge" id="round-badge"></span>
         </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-          <span class="badge badge-amber" id="round-badge"></span>
-          <button class="btn-sm" id="btn-descend" onclick="confirmDescend()" style="display:none;font-size:11px;">↓ Commencer la descente</button>
-        </div>
+        <div class="round-progress"><div class="round-progress-fill" id="round-progress"></div></div>
+        <button class="btn-ghost-light" id="btn-descend" onclick="confirmDescend()" style="display:none;">↓ Commencer la descente</button>
       </div>
 
       <div class="info-row">
-        <div style="display:flex;flex-direction:column;gap:4px;">
-          <span style="font-size:13px;color:var(--text3);">🃏 Dealer : <strong style="color:var(--text);" id="info-dealer"></strong></span>
-          <span style="font-size:13px;">🎯 Premier à parler : <strong id="info-first"></strong></span>
+        <div class="info-chip">
+          <span class="info-label">Donne</span>
+          <span class="info-player" id="info-dealer"></span>
+        </div>
+        <div class="info-chip">
+          <span class="info-label">Parle en premier</span>
+          <span class="info-player" id="info-first"></span>
         </div>
       </div>
 
@@ -138,9 +149,9 @@
             </thead>
             <tbody id="announce-tbody"></tbody>
           </table>
-          <div class="warn-box" id="warn-announce"></div>
+          <div class="last-hint" id="last-hint" aria-live="polite"></div>
         </div>
-        <button class="btn btn-primary" onclick="validateAnnouncements()">Valider les annonces →</button>
+        <button class="btn btn-primary" onclick="validateAnnouncements()">Valider les annonces</button>
         <div class="btn-row">
           <button class="btn btn-secondary" onclick="pauseGame()">⏸ Mettre en pause</button>
           <button class="btn btn-end" onclick="confirmEndGame()">Terminer la partie</button>
@@ -163,7 +174,7 @@
             <tbody id="result-tbody"></tbody>
           </table>
         </div>
-        <button class="btn btn-primary" onclick="validateResults()">Valider les résultats →</button>
+        <button class="btn btn-primary" onclick="validateResults()">Valider les résultats</button>
         <div class="btn-row">
           <button class="btn btn-secondary" onclick="backToAnnounce()">← Corriger les annonces</button>
           <button class="btn btn-secondary" onclick="pauseGame()">⏸ Mettre en pause</button>
@@ -173,15 +184,15 @@
         </div>
       </div>
 
-      <button class="btn btn-secondary" id="btn-fix-round" onclick="openRoundPicker()" style="margin-top:8px;display:none;">✏️ Corriger une manche précédente</button>
+      <button class="btn btn-link" id="btn-fix-round" onclick="openRoundPicker()" style="display:none;">Corriger une manche précédente</button>
     </div>
   </div>
 
   <!-- ── SCORES SCREEN ── -->
   <div class="screen" id="screen-scores">
-    <div style="padding-top:8px;">
+    <div>
       <h2>Scores</h2>
-      <div class="card" style="padding:12px 16px;">
+      <div class="card card-flush">
         <div class="score-wrap">
           <table class="score-table">
             <thead><tr id="score-thead"></tr></thead>
@@ -190,20 +201,20 @@
         </div>
         <p class="score-hint" id="score-hint">Touchez une ligne pour corriger la manche.</p>
       </div>
-      <button class="btn btn-secondary" onclick="showScreen('game')" id="back-to-game-btn">← Retour à la manche</button>
+      <button class="btn btn-secondary" onclick="showScreen('game')" id="back-to-game-btn">Retour à la manche</button>
       <button class="btn btn-end" onclick="confirmEndGame()" style="margin-top:8px;" id="btn-end-scores">Terminer la partie</button>
     </div>
   </div>
 
   <!-- ── RULES SCREEN ── -->
   <div class="screen" id="screen-rules">
-    <div style="padding-top:8px;">
+    <div>
       <h2>Règles du jeu</h2>
 
       <div class="card">
         <div class="rule-block">
           <h3>🃏 But du jeu</h3>
-          <p>Annoncer <em>exactement</em> le nombre de plis que l'on va remporter. Ni plus, ni moins. On marque des points uniquement si l'annonce est respectée.</p>
+          <p>Annoncer <em>exactement</em> le nombre de plis que l'on va remporter. Ni plus, ni moins. On marque des points uniquement si l'annonce est respectée, sinon on en perd.</p>
         </div>
         <div class="rule-block">
           <h3>🔄 Manches</h3>
@@ -219,15 +230,16 @@
         </div>
         <div class="rule-block">
           <h3>🏆 Points</h3>
-          <p>
-            <span class="badge badge-green" style="margin-right:6px;">Réussite</span> Points fixes + 1 pt par pli remporté<br><br>
-            <span class="badge badge-red" style="margin-right:6px;">Échec</span> 0 point (modifiable dans les paramètres)
-          </p>
-          <p style="margin-top:10px;">Exemple : annoncer 3 et réaliser 3 = 10 + 3 = <strong>13 pts</strong></p>
+          <p><span class="badge badge-green">Réussite</span> 10 points + 1 point par pli remporté.<br>
+            Annoncer 3 et en faire 3 : 10 + 3 = <strong>13 pts</strong>.</p>
+          <p><span class="badge badge-red">Échec</span> 2 points retirés par pli d'écart, dans un sens comme dans l'autre.<br>
+            Annoncer 4 et en faire 1 : 3 plis d'écart × 2 = <strong>&minus;6 pts</strong>.<br>
+            Annoncer 7 et en faire 9 : 2 plis d'écart × 2 = <strong>&minus;4 pts</strong>.</p>
+          <p class="muted">Barème modifiable sur l'écran Joueurs, avant de lancer la partie.</p>
         </div>
         <div class="rule-block">
           <h3>👥 Rotation</h3>
-          <p>À chaque manche, le dealer tourne d'un joueur dans le sens des aiguilles d'une montre. Le premier à annoncer est le joueur à gauche du dealer.</p>
+          <p>À chaque manche, le donneur tourne d'un joueur dans le sens des aiguilles d'une montre. Le premier à annoncer est le joueur à gauche du donneur.</p>
         </div>
       </div>
     </div>
@@ -235,13 +247,13 @@
 
   <!-- ── COMPTE SCREEN ── -->
   <div class="screen" id="screen-compte">
-    <div style="padding-top:8px;">
+    <div>
       <h2>Compte</h2>
 
       <!-- Not logged in -->
       <div id="compte-loggedout">
         <div class="card" style="text-align:center;padding:32px 20px;">
-          <div style="font-size:48px;margin-bottom:12px;">🎴</div>
+          <div class="brand-suits brand-suits-lg" aria-hidden="true"><span>♠</span><span class="r">♥</span><span>♣</span><span class="r">♦</span></div>
           <p style="font-size:15px;font-weight:500;margin-bottom:8px;">Connecte-toi pour sauvegarder tes parties</p>
           <p style="font-size:13px;color:var(--text3);margin-bottom:20px;">L'historique de tes parties sera sauvegardé automatiquement à la fin de chaque partie.</p>
           <button class="btn btn-primary" onclick="signInWithGoogle()" style="max-width:280px;margin:0 auto;">
@@ -291,7 +303,7 @@
         <h2 id="edit-title" style="margin-bottom:2px;">Corriger la manche</h2>
         <div class="modal-sub" id="edit-sub"></div>
       </div>
-      <button class="btn-sm" onclick="closeEditRound()" aria-label="Fermer">✕</button>
+      <button class="icon-btn" onclick="closeEditRound()" aria-label="Fermer">✕</button>
     </div>
 
     <div class="modal-body">
@@ -321,13 +333,95 @@
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="picker-title">
     <div class="modal-head">
       <h2 id="picker-title">Quelle manche corriger ?</h2>
-      <button class="btn-sm" onclick="closeRoundPicker()" aria-label="Fermer">✕</button>
+      <button class="icon-btn" onclick="closeRoundPicker()" aria-label="Fermer">✕</button>
     </div>
     <div class="modal-body">
       <div class="seq-wrap" id="picker-list"></div>
     </div>
     <div class="modal-foot">
       <button class="btn btn-secondary" onclick="closeRoundPicker()">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── PWA INSTALL BANNER (mobile, app non installée) ── -->
+<div id="install-banner" role="dialog" aria-labelledby="install-banner-title">
+  <button class="ib-close" onclick="dismissInstallBanner()" aria-label="Fermer">✕</button>
+  <img class="ib-logo" src="images/android-chrome-192x192.png" alt="" aria-hidden="true">
+  <div class="ib-body">
+    <div class="ib-title" id="install-banner-title">Installer Rikiki</div>
+    <div class="ib-sub">Accès rapide, même hors ligne</div>
+  </div>
+  <button class="ib-cta" onclick="openInstallGuide()">Installer</button>
+</div>
+
+<!-- ── INSTALL GUIDE MODAL ── -->
+<div class="modal-backdrop" id="install-modal" style="display:none;" onclick="onInstallBackdrop(event)">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="install-title">
+    <div class="modal-head">
+      <h2 id="install-title">Installer l'app</h2>
+      <button class="icon-btn" onclick="closeInstallGuide()" aria-label="Fermer">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="install-hdr">
+        <img class="install-icon" src="images/android-chrome-192x192.png" alt="" aria-hidden="true">
+        <p>Ajoute Rikiki à ton écran d'accueil pour l'ouvrir en un geste, comme une vraie app.</p>
+      </div>
+
+      <ol class="install-steps" id="install-ios">
+        <li>
+          <span class="step-num">1</span>
+          <div>
+            <div class="step-title">Appuie sur le bouton de partage</div>
+            <div class="step-text">L'icône carrée avec une flèche vers le haut, en bas de l'écran (en haut sur iPad).</div>
+          </div>
+        </li>
+        <li>
+          <span class="step-num">2</span>
+          <div>
+            <div class="step-title">Choisis « Sur l'écran d'accueil »</div>
+            <div class="step-text">Fais défiler le menu si l'option n'est pas visible.</div>
+          </div>
+        </li>
+        <li>
+          <span class="step-num">3</span>
+          <div>
+            <div class="step-title">Appuie sur « Ajouter »</div>
+            <div class="step-text">L'icône Rikiki apparaît sur ton écran d'accueil.</div>
+          </div>
+        </li>
+      </ol>
+
+      <ol class="install-steps" id="install-android" style="display:none;">
+        <li>
+          <span class="step-num">1</span>
+          <div>
+            <div class="step-title">Ouvre le menu du navigateur</div>
+            <div class="step-text">Les trois points (⋮) en haut à droite.</div>
+          </div>
+        </li>
+        <li>
+          <span class="step-num">2</span>
+          <div>
+            <div class="step-title">Sélectionne « Installer l'application »</div>
+            <div class="step-text">Ou « Ajouter à l'écran d'accueil » selon le navigateur.</div>
+          </div>
+        </li>
+        <li>
+          <span class="step-num">3</span>
+          <div>
+            <div class="step-title">Confirme l'installation</div>
+            <div class="step-text">L'icône Rikiki apparaît sur ton écran d'accueil.</div>
+          </div>
+        </li>
+      </ol>
+
+      <ul class="install-why">
+        <li>Ouverture instantanée depuis l'écran d'accueil</li>
+        <li>Fonctionne hors ligne, même au fond du jardin</li>
+        <li>Plein écran, sans la barre du navigateur</li>
+      </ul>
+      <button class="btn btn-primary" id="native-install-btn" style="display:none;margin-top:16px;" onclick="triggerNativeInstall()">Installer maintenant</button>
     </div>
   </div>
 </div>

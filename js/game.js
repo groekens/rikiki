@@ -3,7 +3,9 @@ const Game = {
   settings: {
     pointsOnSuccess: 10,
     pointsPerTrick: 1,
-    pointsOnFailure: 0,
+    // Retiré pour chaque pli d'écart entre l'annonce et le résultat.
+    // Toujours stocké en positif : annoncer 4 et faire 1 coûte 3 × 2 = 6 pts.
+    penaltyPerTrick: 2,
   },
 
   state: {
@@ -125,16 +127,18 @@ const Game = {
     }
   },
 
+  pointsFor(announced, got) {
+    if (announced === got) {
+      return this.settings.pointsOnSuccess + got * this.settings.pointsPerTrick;
+    }
+    const penalty = Math.abs(announced - got) * this.settings.penaltyPerTrick;
+    return penalty ? -penalty : 0;
+  },
+
   computeScores(roundIdx) {
     const r = this.state.rounds[roundIdx];
     r.announcements.forEach((a, i) => {
-      let pts;
-      if (a.announced === a.got) {
-        pts = this.settings.pointsOnSuccess + a.got * this.settings.pointsPerTrick;
-      } else {
-        pts = this.settings.pointsOnFailure;
-      }
-      this.state.players[i].scores[roundIdx] = pts;
+      this.state.players[i].scores[roundIdx] = this.pointsFor(a.announced, a.got);
     });
   },
 
@@ -216,7 +220,15 @@ const Game = {
     const st = data && data.state;
     if (!st || !Array.isArray(st.players) || st.players.length < 2) return false;
     if (!Array.isArray(st.rounds) || !Array.isArray(st.roundSequence)) return false;
-    if (data.settings) this.settings = { ...this.settings, ...data.settings };
+    if (data.settings) {
+      const saved = { ...data.settings };
+      // Partie commencée avant la pénalité par pli d'écart : elle a été jouée
+      // avec un échec à 0, on garde cette règle pour que corriger une ancienne
+      // manche ne mélange pas deux barèmes dans la même partie.
+      if (saved.penaltyPerTrick === undefined && 'pointsOnFailure' in saved) saved.penaltyPerTrick = 0;
+      delete saved.pointsOnFailure;
+      this.settings = { ...this.settings, ...saved };
+    }
     this.state = st;
     if (!this.state.id) this.state.id = this.newId();
     return true;

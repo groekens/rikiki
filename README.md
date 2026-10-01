@@ -22,7 +22,8 @@ Application PWA pour compter les points au jeu de cartes Rikiki.
 - **Compte Google** : historique des parties terminées et reprise des parties
   en cours depuis un autre appareil.
 - Mode hors-ligne (Service Worker)
-- Installable sur mobile (PWA)
+- Installable sur mobile (PWA), avec bannière d'invitation sur iOS et Android
+  (masquée 30 jours après un refus, jamais affichée une fois l'app installée)
 
 ## Configuration Firebase requise
 
@@ -67,7 +68,15 @@ git push -u origin main
 |-----------|-----------|
 | Points fixes si réussite | 10 pts |
 | Points par pli réalisé (si réussite) | 1 pt/pli |
-| Points si échec | 0 pts |
+| Pénalité par pli d'écart (si échec) | 2 pts/pli |
+
+L'échec coûte `|annoncé - réalisé| × pénalité` : annoncer 4 et en faire 1
+donne -6, annoncer 7 et en faire 9 donne -4. La pénalité se saisit en positif
+(un `-2` tapé est lu comme 2), 0 désactive la pénalité.
+
+Les parties commencées avant cette règle (paramètre `pointsOnFailure`) sont
+reprises avec une pénalité de 0, pour que corriger une ancienne manche ne
+mélange pas deux barèmes. Les réglages par défaut enregistrés passent à 2.
 
 ## Structure
 
