@@ -1256,3 +1256,20 @@ footer {
   cursor: pointer;
 }
 .segmented button.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+
+/* Illustrations du guide d'installation (reprises de trashometre).
+   Couleurs en variables pour suivre le mode sombre. */
+.step-illu {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--surface2);
+  border-radius: 10px;
+}
+.step-illu svg { display: block; width: 100%; height: auto; }
+.illu-bar { fill: var(--surface3); }
+.illu-sheet { fill: var(--surface); stroke: var(--surface3); stroke-width: 1; }
+.illu-text { font-family: 'DM Sans', system-ui, sans-serif; font-size: 13px; fill: var(--text2); }
+.illu-strong { fill: var(--text); font-weight: 500; }
+.illu-ring { stroke: var(--accent); stroke-width: 2.5; }
+.illu-icon { stroke: var(--text); stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.illu-dot { fill: var(--text); }
