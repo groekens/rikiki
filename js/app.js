@@ -310,6 +310,8 @@ function renderGameScreen() {
   document.getElementById('info-first').innerHTML =
     `${avatar(players[r.firstPlayer].name, r.firstPlayer, 'sm')}<span>${escapeHtml(players[r.firstPlayer].name)}</span>`;
 
+  renderStandingsStrip();
+
   // Phase
   if (Game.state.phase === 'announce') {
     renderAnnouncePhase();
@@ -800,9 +802,97 @@ window.applyCloudGame = function (data) {
 // ─── Scores ───────────────────────────────────────────────────────
 let lastScoredRounds = null;
 
+// ─── Classement ───────────────────────────────────────────────────
+// Le tableau répond à "combien X a marqué à la manche 5", le classement à
+// "qui gagne". Le tableau garde l'ordre de la table (on y corrige les
+// manches), le classement se réordonne à chaque manche.
+let lastStandingsAnim = null;
+
+// Mouvement depuis la manche précédente, en places gagnées (positif) ou perdues.
+function standingsMoves(done) {
+  if (done < 2) return {};
+  const before = {};
+  Game.getStandings(done - 1).forEach(r => { before[r.idx] = r.rank; });
+  const moves = {};
+  Game.getStandings(done).forEach(r => { moves[r.idx] = before[r.idx] - r.rank; });
+  return moves;
+}
+
+function renderStandings() {
+  const card = document.getElementById('standings-card');
+  const done = Game.completedRounds();
+  if (done === 0) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  const rows = Game.getStandings(done);
+  const moves = standingsMoves(done);
+  const leader = rows[0].total;
+  // Les flèches ne s'animent qu'une fois, quand une nouvelle manche arrive.
+  const animate = lastStandingsAnim !== null && lastStandingsAnim.id === Game.state.id && done > lastStandingsAnim.done;
+  lastStandingsAnim = { id: Game.state.id, done };
+
+  document.getElementById('standings').innerHTML = rows.map(r => {
+    const mv = moves[r.idx] || 0;
+    const move = mv > 0 ? `<span class="st-move up">▲${mv}</span>`
+      : mv < 0 ? `<span class="st-move down">▼${-mv}</span>`
+      : '<span class="st-move"></span>';
+    const gap = r.total < leader ? `<span class="st-gap">à ${leader - r.total}</span>` : '<span class="st-gap"></span>';
+    const cls = ['st-row', r.rank === 1 ? 'first' : '', animate && mv > 0 ? 'climb' : ''].join(' ');
+    return `<li class="${cls}">
+      <span class="st-rank">${r.rank}</span>
+      ${avatar(r.name, r.idx, 'sm')}
+      <span class="st-name">${escapeHtml(r.name)}</span>
+      ${move}
+      ${gap}
+      <span class="st-pts">${r.total}<small> pts</small></span>
+    </li>`;
+  }).join('');
+}
+
+// Bandeau de l'écran de jeu : le podium d'un coup d'oeil, sans changer d'écran.
+function renderStandingsStrip() {
+  const strip = document.getElementById('standings-strip');
+  const done = Game.completedRounds();
+  if (done === 0) { strip.style.display = 'none'; return; }
+  const rows = Game.getStandings(done);
+  const top = rows.slice(0, 3);
+  const rest = rows.length - top.length;
+  strip.innerHTML = `
+    <span class="ss-trophy">🏆</span>
+    ${top.map(r => `<span class="ss-item p${r.idx % PLAYER_COLORS}">
+      <span class="ss-rank">${r.rank}</span>
+      <span class="ss-name">${escapeHtml(r.name)}</span>
+      <span class="ss-pts">${r.total}</span>
+    </span>`).join('')}
+    ${rest > 0 ? `<span class="ss-more">+${rest}</span>` : ''}
+    <span class="ss-chev">›</span>`;
+  // Chaque nom prend sa largeur naturelle tant que ça tient ; sinon la place
+  // est partagée à parts égales, au lieu d'écraser le nom le plus court.
+  strip.style.gridTemplateColumns =
+    `auto repeat(${top.length}, minmax(0, max-content))${rest > 0 ? ' auto' : ''} 1fr`;
+  strip.style.display = 'grid';
+}
+
+// En-têtes courts quand la table est serrée : le plus petit préfixe qui
+// distingue chaque joueur ("Ga" / "Go" pour Gab et Gourmand), le nom complet
+// étant lisible juste au-dessus, dans le classement.
+function shortNames(names) {
+  return names.map((n, i) => {
+    for (let k = 1; k <= 3; k++) {
+      const pre = n.slice(0, k).toLowerCase();
+      if (!names.some((o, j) => j !== i && o.slice(0, k).toLowerCase() === pre)) {
+        return n.charAt(0).toUpperCase() + n.slice(1, k);
+      }
+    }
+    return n.charAt(0).toUpperCase() + n.slice(1, 3);
+  });
+}
+
 function renderScores() {
   const state = Game.state;
   if (!state.players.length) return;
+
+  renderStandings();
 
   const done = Game.completedRounds();
   const players = state.players;
@@ -813,16 +903,21 @@ function renderScores() {
   const tbody = document.getElementById('score-tbody');
   // Au-dela de 4 joueurs, 7 colonnes ne tiennent plus sur un telephone:
   // on resserre plutot que d'imposer un defilement lateral.
+  const dense = players.length >= 5;
   const table = thead.closest('table');
-  if (table) table.classList.toggle('dense', players.length >= 5);
+  if (table) table.classList.toggle('dense', dense);
+  const shorts = dense ? shortNames(players.map(p => p.name)) : null;
 
   // Colonnes = joueurs (2 a 8, borne), lignes = manches (jusqu'a 51). Le total
   // vit dans l'en-tete, qui reste colle en haut pendant le defilement.
-  let head = '<th class="col-round">Manche</th>';
+  let head = `<th class="col-round">${dense ? 'M.' : 'Manche'}</th>`;
   players.forEach((p, i) => {
     const leads = done > 0 && totals[i] === best;
+    const label = dense
+      ? `<span class="ph-tag" title="${escapeHtml(p.name)}">${escapeHtml(shorts[i])}</span>`
+      : `<span class="ph-name">${escapeHtml(p.name)}</span>`;
     head += `<th class="col-player p${i % PLAYER_COLORS}${leads ? ' leads' : ''}">
-      <span class="ph-name">${escapeHtml(p.name)}</span>
+      ${label}
       <span class="ph-total">${formatPts(totals[i]).replace('+', '')}</span>
     </th>`;
   });

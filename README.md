@@ -11,7 +11,13 @@ Application PWA pour compter les points au jeu de cartes Rikiki.
 - Le dernier à annoncer voit le nombre qu'il ne peut pas dire (pastille barrée)
 - Plis du dernier joueur déduits automatiquement du total, toujours modifiables
 - Calcul automatique des points
-- Tableau des scores en direct
+- Tableau des scores en direct, avec un **classement** au-dessus : rang partagé
+  en cas d'égalité, places gagnées ou perdues depuis la manche précédente (▲▼),
+  écart avec le leader. Calculé depuis les scores de chaque manche, rien à stocker
+- Podium en bandeau sur l'écran de la manche (touche pour le classement complet),
+  masqué en vue paysage où le classement est déjà affiché
+- À partir de 5 joueurs, en-têtes du tableau en pastilles courtes ("Ga" / "Go"
+  pour Gab et Gourmand) : 8 joueurs tiennent sur un téléphone sans défilement
 - Rotation automatique du dealer et du premier à parler
 - Règles du jeu intégrées
 - Paramètres de score personnalisables

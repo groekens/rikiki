@@ -1,4 +1,4 @@
-const CACHE = 'rikiki-v14';
+const CACHE = 'rikiki-v15';
 
 // Le code de l'app. Servi réseau d'abord pour qu'une mise en ligne arrive
 // sans dépendre d'un bump de version, avec repli sur le cache hors ligne.

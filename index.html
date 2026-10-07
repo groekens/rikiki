@@ -131,6 +131,8 @@
         <button class="btn-ghost-light" id="btn-descend" onclick="confirmDescend()" style="display:none;">↓ Commencer la descente</button>
       </div>
 
+      <button class="standings-strip" id="standings-strip" onclick="showScreen('scores')" style="display:none;" aria-label="Voir le classement complet"></button>
+
       <div class="info-row">
         <div class="info-chip">
           <span class="info-label">Donne</span>
@@ -181,6 +183,10 @@
   <div class="screen" id="screen-scores">
     <div>
       <h2>Scores</h2>
+      <div class="card standings-card" id="standings-card" style="display:none;">
+        <h3>Classement</h3>
+        <ol class="standings" id="standings"></ol>
+      </div>
       <div class="card card-flush">
         <div class="score-wrap">
           <table class="score-table">

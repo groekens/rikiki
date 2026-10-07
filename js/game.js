@@ -188,6 +188,22 @@ const Game = {
     return this.state.players[playerIdx].scores.reduce((s, v) => s + (v || 0), 0);
   },
 
+  // Classement après les `n` premières manches, rang "à la foot" : deux
+  // joueurs à égalité partagent la place (1, 1, 3). Calculé depuis les scores
+  // de chaque manche, donc rien à stocker et les anciennes parties en profitent.
+  getStandings(n = this.completedRounds()) {
+    const rows = this.state.players.map((p, i) => ({
+      name: p.name,
+      idx: i,
+      total: p.scores.slice(0, n).reduce((s, v) => s + (v || 0), 0),
+    }));
+    rows.sort((a, b) => b.total - a.total || a.idx - b.idx);
+    rows.forEach((r, k) => {
+      r.rank = k > 0 && r.total === rows[k - 1].total ? rows[k - 1].rank : k + 1;
+    });
+    return rows;
+  },
+
   getSortedPlayers() {
     return this.state.players
       .map((p, i) => ({ ...p, idx: i, total: this.getTotal(i) }))
