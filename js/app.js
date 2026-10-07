@@ -873,21 +873,6 @@ function renderStandingsStrip() {
   strip.style.display = 'grid';
 }
 
-// En-têtes courts quand la table est serrée : le plus petit préfixe qui
-// distingue chaque joueur ("Ga" / "Go" pour Gab et Gourmand), le nom complet
-// étant lisible juste au-dessus, dans le classement.
-function shortNames(names) {
-  return names.map((n, i) => {
-    for (let k = 1; k <= 3; k++) {
-      const pre = n.slice(0, k).toLowerCase();
-      if (!names.some((o, j) => j !== i && o.slice(0, k).toLowerCase() === pre)) {
-        return n.charAt(0).toUpperCase() + n.slice(1, k);
-      }
-    }
-    return n.charAt(0).toUpperCase() + n.slice(1, 3);
-  });
-}
-
 function renderScores() {
   const state = Game.state;
   if (!state.players.length) return;
@@ -903,21 +888,16 @@ function renderScores() {
   const tbody = document.getElementById('score-tbody');
   // Au-dela de 4 joueurs, 7 colonnes ne tiennent plus sur un telephone:
   // on resserre plutot que d'imposer un defilement lateral.
-  const dense = players.length >= 5;
   const table = thead.closest('table');
-  if (table) table.classList.toggle('dense', dense);
-  const shorts = dense ? shortNames(players.map(p => p.name)) : null;
+  if (table) table.classList.toggle('dense', players.length >= 5);
 
   // Colonnes = joueurs (2 a 8, borne), lignes = manches (jusqu'a 51). Le total
   // vit dans l'en-tete, qui reste colle en haut pendant le defilement.
-  let head = `<th class="col-round">${dense ? 'M.' : 'Manche'}</th>`;
+  let head = '<th class="col-round">Manche</th>';
   players.forEach((p, i) => {
     const leads = done > 0 && totals[i] === best;
-    const label = dense
-      ? `<span class="ph-tag" title="${escapeHtml(p.name)}">${escapeHtml(shorts[i])}</span>`
-      : `<span class="ph-name">${escapeHtml(p.name)}</span>`;
     head += `<th class="col-player p${i % PLAYER_COLORS}${leads ? ' leads' : ''}">
-      ${label}
+      <span class="ph-name">${escapeHtml(p.name)}</span>
       <span class="ph-total">${formatPts(totals[i]).replace('+', '')}</span>
     </th>`;
   });
