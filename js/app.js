@@ -538,19 +538,26 @@ function refreshResults() {
   const n = Game.state.players.length;
   const all = Game.state.players.map((_, i) => i);
 
+  // Une ligne déjà déduite ne rejoue pas son animation à chaque saisie.
+  const wasAuto = new Set(all.filter(pi => document.getElementById('row-res-' + pi).classList.contains('auto')));
   all.forEach(pi => {
     if (!manualResults.has(pi)) document.getElementById('res-' + pi).value = '';
     document.getElementById('row-res-' + pi).classList.remove('auto');
   });
 
-  if (manualResults.size === n - 1) {
-    const missing = all.find(pi => !manualResults.has(pi));
-    const sum = [...manualResults].reduce((s, pi) => s + parseInt(document.getElementById('res-' + pi).value), 0);
-    const rest = r.cards - sum;
-    if (rest >= 0) {
-      document.getElementById('res-' + missing).value = String(rest);
-      replay(document.getElementById('row-res-' + missing), 'auto');
-    }
+  // Ce qui se déduit des saisies : si le compte de cartes est atteint, tous les
+  // autres sont à 0 (2 plis sur 2 à la manche 2) ; s'il ne manque qu'un
+  // joueur, il a le reste.
+  const missing = all.filter(pi => !manualResults.has(pi));
+  const sum = [...manualResults].reduce((s, pi) => s + parseInt(document.getElementById('res-' + pi).value), 0);
+  const rest = r.cards - sum;
+  if (missing.length && (rest === 0 || (missing.length === 1 && rest > 0))) {
+    missing.forEach(pi => {
+      document.getElementById('res-' + pi).value = String(rest);
+      const row = document.getElementById('row-res-' + pi);
+      if (wasAuto.has(pi)) row.classList.add('auto');
+      else replay(row, 'auto');
+    });
   }
 
   all.forEach(pi => { syncChips('res', pi); previewPoints(pi); });
@@ -827,18 +834,23 @@ function renderStandings() {
   const rows = Game.getStandings(done);
   const moves = standingsMoves(done);
   const leader = rows[0].total;
-  // Les flèches ne s'animent qu'une fois, quand une nouvelle manche arrive.
-  const animate = lastStandingsAnim !== null && lastStandingsAnim.id === Game.state.id && done > lastStandingsAnim.done;
-  lastStandingsAnim = { id: Game.state.id, done };
+  // Le classement ne bouge qu'une fois par nouvelle manche, et seulement sous
+  // les yeux de quelqu'un : un rendu sur écran masqué ne consomme pas l'effet.
+  const visible = document.getElementById('screen-scores').classList.contains('active');
+  const animate = visible && lastStandingsAnim !== null && lastStandingsAnim.id === Game.state.id && done > lastStandingsAnim.done;
+  if (visible || lastStandingsAnim === null || lastStandingsAnim.id !== Game.state.id) {
+    lastStandingsAnim = { id: Game.state.id, done };
+  }
 
-  document.getElementById('standings').innerHTML = rows.map(r => {
+  const list = document.getElementById('standings');
+  list.innerHTML = rows.map(r => {
     const mv = moves[r.idx] || 0;
     const move = mv > 0 ? `<span class="st-move up">▲${mv}</span>`
       : mv < 0 ? `<span class="st-move down">▼${-mv}</span>`
       : '<span class="st-move"></span>';
     const gap = r.total < leader ? `<span class="st-gap">à ${leader - r.total}</span>` : '<span class="st-gap"></span>';
-    const cls = ['st-row', r.rank === 1 ? 'first' : '', animate && mv > 0 ? 'climb' : ''].join(' ');
-    return `<li class="${cls}">
+    const cls = ['st-row', r.rank === 1 ? 'first' : ''].join(' ');
+    return `<li class="${cls}" data-idx="${r.idx}">
       <span class="st-rank">${r.rank}</span>
       ${avatar(r.name, r.idx, 'sm')}
       <span class="st-name">${escapeHtml(r.name)}</span>
@@ -847,6 +859,64 @@ function renderStandings() {
       <span class="st-pts">${r.total}<small> pts</small></span>
     </li>`;
   }).join('');
+
+  if (animate && done >= 2) animateStandings(list, Game.getStandings(done - 1), moves);
+}
+
+// Chaque ligne repart de sa place à la manche précédente et glisse jusqu'à
+// la nouvelle : on voit qui double qui, comme un classement de championnat.
+function animateStandings(list, before, moves) {
+  if (!list.animate || reducedMotion()) return;
+  // Couleurs résolues une fois (thème clair ou sombre) : des var() dans les
+  // images clés ne sont pas interprétées partout.
+  const css = getComputedStyle(list);
+  const surface = css.getPropertyValue('--surface').trim();
+  const tint = { up: css.getPropertyValue('--green-soft').trim(), down: css.getPropertyValue('--red-soft').trim() };
+  const prevPos = {};
+  before.forEach((r, k) => { prevPos[r.idx] = k; });
+  const items = [...list.children];
+  const rowH = items[0].offsetHeight;
+  const HOLD = 350;      // un temps sur l'ancien ordre avant que ça bouge
+  const MOVE = 900;
+
+  items.forEach((li, k) => {
+    const idx = Number(li.dataset.idx);
+    const dy = (prevPos[idx] - k) * rowH;
+    const mv = moves[idx] || 0;
+    if (!dy && !mv) return;
+    // Fond opaque le temps du croisement, sinon les textes se superposent.
+    li.style.background = surface;
+    li.style.zIndex = mv > 0 ? 2 : 1;   // celui qui monte passe devant
+    const anims = [];
+    if (dy) {
+      const lift = mv > 0 ? 'scale(1.04)' : 'scale(0.98)';
+      anims.push(li.animate([
+        { transform: `translateY(${dy}px)` },
+        { transform: `translateY(${dy * 0.5}px) ${lift}`, offset: 0.5 },
+        { transform: 'none' },
+      ], { duration: MOVE, delay: HOLD, easing: 'cubic-bezier(.45, 0, .2, 1)', fill: 'backwards' }));
+    }
+    if (mv) {
+      const c = mv > 0 ? tint.up : tint.down;
+      // Teinte posée par une ombre intérieure : elle se superpose au fond
+      // opaque, y compris quand la couleur est translucide (thème sombre).
+      anims.push(li.animate([
+        { boxShadow: `inset 0 0 0 200px ${c}` },
+        { boxShadow: `inset 0 0 0 200px ${c}`, offset: 0.6 },
+        { boxShadow: 'inset 0 0 0 200px transparent' },
+      ], { duration: HOLD + MOVE + 900, easing: 'ease-out' }));
+      const arrow = li.querySelector('.st-move');
+      if (arrow) arrow.animate([
+        { transform: 'scale(0)', opacity: 0 },
+        { transform: 'scale(1.6)', opacity: 1, offset: 0.6 },
+        { transform: 'none', opacity: 1 },
+      ], { duration: 450, delay: HOLD + MOVE - 150, easing: 'ease-out', fill: 'backwards' });
+    }
+    Promise.all(anims.map(a => a.finished)).catch(() => {}).then(() => {
+      li.style.background = '';
+      li.style.zIndex = '';
+    });
+  });
 }
 
 // Bandeau de l'écran de jeu : le podium d'un coup d'oeil, sans changer d'écran.
@@ -857,9 +927,18 @@ function renderStandingsStrip() {
   const rows = Game.getStandings(done);
   const top = rows.slice(0, 3);
   const rest = rows.length - top.length;
+
+  // Positions avant le nouveau rendu, pour faire glisser ce qui a bougé.
+  const before = {};
+  // (un bandeau sur écran masqué n'a pas de position : rien à comparer)
+  if (strip.getClientRects().length) {
+    strip.querySelectorAll('.ss-item').forEach(el => { before[el.dataset.idx] = el.getBoundingClientRect().left; });
+  }
+  const hadPodium = Object.keys(before).length > 0;
+
   strip.innerHTML = `
     <span class="ss-trophy">🏆</span>
-    ${top.map(r => `<span class="ss-item p${r.idx % PLAYER_COLORS}">
+    ${top.map(r => `<span class="ss-item p${r.idx % PLAYER_COLORS}" data-idx="${r.idx}">
       <span class="ss-rank">${r.rank}</span>
       <span class="ss-name">${escapeHtml(r.name)}</span>
       <span class="ss-pts">${r.total}</span>
@@ -871,6 +950,30 @@ function renderStandingsStrip() {
   strip.style.gridTemplateColumns =
     `auto repeat(${top.length}, minmax(0, max-content))${rest > 0 ? ' auto' : ''} 1fr`;
   strip.style.display = 'grid';
+
+  if (!hadPodium || !strip.animate || reducedMotion()) return;
+  strip.querySelectorAll('.ss-item').forEach(el => {
+    const was = before[el.dataset.idx];
+    if (was === undefined) {
+      // Nouveau sur le podium.
+      el.animate([
+        { transform: 'translateY(-14px) scale(0.6)', opacity: 0 },
+        { transform: 'translateY(2px) scale(1.12)', opacity: 1, offset: 0.6 },
+        { transform: 'none', opacity: 1 },
+      ], { duration: 650, delay: 150, easing: 'ease-out', fill: 'backwards' });
+      return;
+    }
+    const dx = was - el.getBoundingClientRect().left;
+    if (Math.abs(dx) < 2) return;
+    el.style.position = 'relative';
+    el.style.zIndex = dx > 0 ? 2 : 1;
+    el.animate([
+      { transform: `translateX(${dx}px)` },
+      { transform: `translateX(${dx * 0.5}px) translateY(${dx > 0 ? -6 : 6}px) scale(${dx > 0 ? 1.1 : 0.95})`, offset: 0.5 },
+      { transform: 'none' },
+    ], { duration: 750, easing: 'cubic-bezier(.45, 0, .2, 1)' })
+      .finished.catch(() => {}).then(() => { el.style.zIndex = ''; });
+  });
 }
 
 function renderScores() {
