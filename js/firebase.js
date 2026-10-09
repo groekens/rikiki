@@ -6,7 +6,10 @@ import { getFirestore, collection, doc, setDoc, deleteDoc, getDocs, orderBy, que
 
 const firebaseConfig = {
   apiKey: "AIzaSyC9EtNjgbjJZVx8N2mfpN2q9RL0Bv4XfvM",
-  authDomain: "rikiki-the-game.firebaseapp.com",
+  // Connexion servie depuis le domaine de l'app (pages copiées sous /__/auth/) :
+  // Safari bloque le stockage d'un domaine tiers comme firebaseapp.com, ce qui
+  // faisait échouer en silence la connexion par redirection sur iPhone/iPad.
+  authDomain: "rikiki.nuxo.be",
   projectId: "rikiki-the-game",
   storageBucket: "rikiki-the-game.firebasestorage.app",
   messagingSenderId: "506174480119",
