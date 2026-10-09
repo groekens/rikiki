@@ -25,7 +25,8 @@ Application PWA pour compter les points au jeu de cartes Rikiki.
   exact, l'éventail se resserre au-delà de 8), bouton Valider qui se change en
   coche, points de la manche (+13 / −2) qui s'envolent à la validation (un toucher
   passe directement à la suite), podium de fin de partie dont les marches montent
-  du 3e au 1er, pastille du menu qui glisse d'un onglet à l'autre. Trois durées et
+  du 3e au 1er, pastille du menu et du choix du thème qui glisse d'une option à
+  l'autre (sur iPad, le menu s'étire entre vue simple et vue scindée). Trois durées et
   deux courbes de mouvement pour toute l'app, aucune animation en boucle. Tout
   s'efface si le téléphone demande de réduire les animations
 - Rotation automatique du dealer et du premier à parler

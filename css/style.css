@@ -1290,6 +1290,7 @@ footer {
 
 /* ── sélecteur de thème ──────────────────────────────── */
 .segmented {
+  position: relative;
   display: flex;
   gap: 4px;
   padding: 4px;
@@ -1307,6 +1308,9 @@ footer {
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+  position: relative;
+  z-index: 1;
+  transition: color .3s .05s;
 }
 .segmented button.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
 
@@ -1451,21 +1455,22 @@ footer {
   to { opacity: 1; transform: rotate(-8deg); }
 }
 
-/* Pastille rouge du menu qui glisse d'un onglet à l'autre. Une fois posée,
-   l'onglet actif perd son fond : c'est elle qui le dessine. */
-.nav-pill {
+/* Pastille qui glisse d'une option à l'autre (menu, choix du thème). Une
+   fois posée, l'option active perd son fond : c'est elle qui le dessine. */
+.slide-pill {
   position: absolute;
   top: 4px;
   left: 0;
   width: 0;
   height: 0;
   border-radius: 99px;
-  background: var(--accent);
-  box-shadow: 0 2px 8px rgba(239, 90, 70, 0.35);
   pointer-events: none;
   z-index: 0;
 }
+.nav > .slide-pill { background: var(--accent); box-shadow: 0 2px 8px rgba(239, 90, 70, 0.35); }
 .nav.has-pill .nav-btn.active { background: transparent; box-shadow: none; }
+.segmented > .slide-pill { background: var(--surface); box-shadow: var(--shadow-sm); }
+.segmented.has-pill button.active { background: transparent; box-shadow: none; }
 /* Pendant une transition de vue, le menu reste vivant :
    pas de fondu entre deux images du menu, la pastille glisse en direct. */
 ::view-transition-old(nav) { display: none; }

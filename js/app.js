@@ -27,8 +27,15 @@ function showScreen(id) {
     t.finished.catch(() => {}).then(() => { viewTransitionRunning = false; });
     return;
   }
-  if (id !== activeScreen) window.scrollTo(0, 0);
+  // Vrai changement d'onglet, et non simple rafraîchissement ou rotation :
+  // seul cas où le menu s'étire au lieu de sauter.
+  const changing = id !== activeScreen;
+  if (changing) window.scrollTo(0, 0);
   activeScreen = id;
+  const nav = document.querySelector('.nav');
+  // Largeur affichée avant le changement, étirement en cours compris.
+  const navFrom = nav.getBoundingClientRect().width;
+  nav.getAnimations().forEach(a => a.cancel());
   const split = splitApplies(id);
   document.body.classList.toggle('split', split);
 
@@ -45,7 +52,10 @@ function showScreen(id) {
     const btn = document.getElementById('nav-' + s);
     if (btn) btn.classList.toggle('active', s === id);
   });
-  placeNavPill(true);
+  const navTo = nav.getBoundingClientRect().width;
+  const stretching = changing && Math.abs(navTo - navFrom) >= 1;
+  placeNavPill(true, stretching ? STRETCH_MOTION : PILL_MOTION);
+  if (stretching) stretchNav(nav, navFrom, navTo);
 
   // Render whatever is now on screen. renderFinished() never navigates,
   // so this cannot loop back into showScreen().
@@ -61,38 +71,43 @@ window.addEventListener('resize', () => {
   const shouldSplit = splitApplies(activeScreen);
   if (shouldSplit !== document.body.classList.contains('split')) showScreen(activeScreen);
   placeNavPill(false);
+  renderThemePicker();
 });
 
-// La pastille rouge du menu glisse d'un onglet à l'autre, en s'étirant un
-// instant vers sa destination (le bord avant part devant, le bord arrière
-// suit). Tant qu'elle n'est pas posée, l'onglet actif garde son propre fond.
-let navPillPlaced = false;
+// ─── Pastille qui glisse ─────────────────────────────────────────
+// Pastille commune aux contrôles à onglets (menu, choix du thème) : elle
+// glisse d'une option à l'autre en s'étirant un instant vers sa destination
+// (le bord avant part devant, le bord arrière suit). Tant qu'elle n'est pas
+// posée, l'option active garde son propre fond.
+const PILL_MOTION = { duration: 420, easing: 'cubic-bezier(.3, .7, .2, 1)' };
+// Quand le menu change de largeur (vue simple / vue scindée sur iPad), le
+// trajet est bien plus long : menu et pastille ralentissent ensemble, avec un
+// départ et une arrivée en douceur.
+const STRETCH_MOTION = { duration: 650, easing: 'cubic-bezier(.45, .05, .2, 1)' };
 
-function placeNavPill(animate) {
-  const nav = document.querySelector('.nav');
-  if (!nav) return;
-  let pill = nav.querySelector('.nav-pill');
+function slidePill(container, active, animate, motion = PILL_MOTION) {
+  if (!container || !active) return;
+  // Contrôle masqué (écran pas affiché) : rien à mesurer. Il sera posé à
+  // son affichage, sans animation.
+  if (!container.getClientRects().length) { delete container.dataset.pillPlaced; return; }
+  let pill = container.querySelector(':scope > .slide-pill');
   if (!pill) {
     pill = document.createElement('span');
-    pill.className = 'nav-pill';
+    pill.className = 'slide-pill';
     pill.setAttribute('aria-hidden', 'true');
-    nav.prepend(pill);
-    navPillPlaced = false;
+    container.prepend(pill);
   }
-  const btn = nav.querySelector('.nav-btn.active');
-  if (!btn) { pill.style.opacity = '0'; return; }
   // Position actuelle, animation en cours comprise (touchers rapides).
   const from = { left: pill.offsetLeft, width: pill.offsetWidth };
-  const to = { left: btn.offsetLeft, width: btn.offsetWidth };
-  pill.style.opacity = '';
-  pill.style.top = btn.offsetTop + 'px';
-  pill.style.height = btn.offsetHeight + 'px';
+  const to = { left: active.offsetLeft, width: active.offsetWidth };
+  pill.style.top = active.offsetTop + 'px';
+  pill.style.height = active.offsetHeight + 'px';
   pill.style.left = to.left + 'px';
   pill.style.width = to.width + 'px';
-  nav.classList.add('has-pill');
+  container.classList.add('has-pill');
+  const wasPlaced = container.dataset.pillPlaced === '1';
+  container.dataset.pillPlaced = '1';
   const moved = from.left !== to.left || from.width !== to.width;
-  const wasPlaced = navPillPlaced;
-  navPillPlaced = true;
   if (!animate || !wasPlaced || !moved || reducedMotion() || !pill.animate) return;
 
   pill.getAnimations().forEach(a => a.cancel());
@@ -105,7 +120,23 @@ function placeNavPill(animate) {
     { left: from.left + 'px', width: from.width + 'px' },
     { left: midL + 'px', width: (midR - midL) + 'px', offset: 0.45 },
     { left: to.left + 'px', width: to.width + 'px' },
-  ], { duration: 420, easing: 'cubic-bezier(.3, .7, .2, 1)' });
+  ], motion);
+}
+
+function placeNavPill(animate, motion) {
+  const nav = document.querySelector('.nav');
+  slidePill(nav, nav && nav.querySelector('.nav-btn.active'), animate, motion);
+}
+
+// Le menu suit la largeur de l'app : étroit sur une vue simple (Joueurs,
+// Règles, Compte), large sur la vue scindée de l'iPad (Manche et Scores).
+// Il s'étire ou se contracte depuis son centre au lieu de sauter.
+function stretchNav(nav, fromW, toW) {
+  if (reducedMotion() || !nav.animate) return;
+  nav.animate([
+    { width: fromW + 'px', alignSelf: 'center' },
+    { width: toW + 'px', alignSelf: 'center' },
+  ], STRETCH_MOTION);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -1687,7 +1718,7 @@ function currentThemeChoice() {
 function setTheme(choice) {
   try { localStorage.setItem(KEY_THEME, choice); } catch (e) { /* noop */ }
   applyTheme();
-  renderThemePicker();
+  renderThemePicker(true);
 }
 
 function applyTheme() {
@@ -1699,13 +1730,15 @@ function applyTheme() {
   document.querySelector('meta[name=theme-color]').setAttribute('content', dark ? '#1c1720' : '#fbf7f2');
 }
 
-function renderThemePicker() {
+function renderThemePicker(animate = false) {
   const choice = currentThemeChoice();
   document.querySelectorAll('[data-theme-choice]').forEach(b => {
     const on = b.dataset.themeChoice === choice;
     b.classList.toggle('active', on);
     b.setAttribute('aria-checked', on ? 'true' : 'false');
   });
+  const picker = document.getElementById('theme-picker');
+  slidePill(picker, picker && picker.querySelector('button.active'), animate);
 }
 
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
