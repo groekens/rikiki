@@ -1,4 +1,4 @@
-const CACHE = 'rikiki-v20';
+const CACHE = 'rikiki-v21';
 
 // Le code de l'app. Servi réseau d'abord pour qu'une mise en ligne arrive
 // sans dépendre d'un bump de version, avec repli sur le cache hors ligne.
@@ -112,6 +112,9 @@ self.addEventListener('fetch', e => {
   let url;
   try { url = new URL(req.url); } catch (err) { return; }
   if (NETWORK_ONLY_HOSTS.includes(url.hostname)) return;
+  // Pages de connexion Firebase servies depuis le domaine de l'app : jamais
+  // de cache, un résultat de connexion périmé casserait la session.
+  if (url.origin === self.location.origin && url.pathname.startsWith('/__/')) return;
 
   e.respondWith(isShellRequest(url) ? networkFirst(req) : cacheFirst(req));
 });
