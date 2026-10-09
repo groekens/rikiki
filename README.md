@@ -16,10 +16,18 @@ Application PWA pour compter les points au jeu de cartes Rikiki.
 - Tableau des scores en direct, avec un **classement** au-dessus : rang partagé
   en cas d'égalité, places gagnées ou perdues depuis la manche précédente (▲▼),
   écart avec le leader. Calculé depuis les scores de chaque manche, rien à stocker.
-  Après chaque manche, les lignes glissent de l'ancien ordre au nouveau (une fois,
-  à l'ouverture de l'écran ; désactivé si le téléphone réduit les animations)
-- Podium en bandeau sur l'écran de la manche (touche pour le classement complet),
-  masqué en vue paysage où le classement est déjà affiché
+  Après chaque manche, les lignes glissent de l'ancien ordre au nouveau et points,
+  rangs et écarts défilent (une fois, à l'ouverture de l'écran)
+- Podium en bandeau sur l'écran de la manche, masqué en vue paysage où le
+  classement est déjà affiché. Le toucher le déploie en classement complet
+  (View Transitions : Chrome, Safari iOS 18+ ; ailleurs, changement d'écran direct)
+- **Animations de jeu** : cartes distribuées en éventail à chaque manche (le nombre
+  exact, l'éventail se resserre au-delà de 8), bouton Valider qui se change en
+  coche, points de la manche (+13 / −2) qui s'envolent à la validation (un toucher
+  passe directement à la suite), podium de fin de partie dont les marches montent
+  du 3e au 1er, pastille du menu qui glisse d'un onglet à l'autre. Trois durées et
+  deux courbes de mouvement pour toute l'app, aucune animation en boucle. Tout
+  s'efface si le téléphone demande de réduire les animations
 - Rotation automatique du dealer et du premier à parler
 - Règles du jeu intégrées
 - Paramètres de score personnalisables

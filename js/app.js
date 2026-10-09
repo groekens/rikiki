@@ -12,8 +12,21 @@ function splitApplies(id) {
   return isSplitViewport() && (id === 'game' || id === 'scores') && Game.hasActiveGame();
 }
 
+let viewTransitionRunning = false;
+
 function showScreen(id) {
   if (!SCREENS.includes(id)) return;
+  // Changement d'écran par transition de vue : le bandeau podium et la carte
+  // classement portent le même nom, le navigateur fait grandir l'un en
+  // l'autre. Navigateur trop ancien, vue scindée ou animations réduites :
+  // changement direct.
+  if (document.startViewTransition && !viewTransitionRunning && id !== activeScreen
+      && !isSplitViewport() && !reducedMotion()) {
+    viewTransitionRunning = true;
+    const t = document.startViewTransition(() => showScreen(id));
+    t.finished.catch(() => {}).then(() => { viewTransitionRunning = false; });
+    return;
+  }
   if (id !== activeScreen) window.scrollTo(0, 0);
   activeScreen = id;
   const split = splitApplies(id);
@@ -21,10 +34,18 @@ function showScreen(id) {
 
   SCREENS.forEach(s => {
     const visible = split ? (s === 'game' || s === 'scores') : (s === id);
-    document.getElementById('screen-' + s).classList.toggle('active', visible);
+    const screen = document.getElementById('screen-' + s);
+    // Pendant une transition de vue, le fondu d'apparition de l'écran ferait
+    // doublon. On n'y touche qu'au changement de visibilité : le réactiver
+    // sur un écran déjà affiché le rejouerait, d'où un clignotement.
+    if (visible !== screen.classList.contains('active')) {
+      screen.style.animation = visible && viewTransitionRunning ? 'none' : '';
+    }
+    screen.classList.toggle('active', visible);
     const btn = document.getElementById('nav-' + s);
     if (btn) btn.classList.toggle('active', s === id);
   });
+  placeNavPill(true);
 
   // Render whatever is now on screen. renderFinished() never navigates,
   // so this cannot loop back into showScreen().
@@ -39,6 +60,58 @@ function showScreen(id) {
 window.addEventListener('resize', () => {
   const shouldSplit = splitApplies(activeScreen);
   if (shouldSplit !== document.body.classList.contains('split')) showScreen(activeScreen);
+  placeNavPill(false);
+});
+
+// La pastille rouge du menu glisse d'un onglet à l'autre, en s'étirant un
+// instant vers sa destination (le bord avant part devant, le bord arrière
+// suit). Tant qu'elle n'est pas posée, l'onglet actif garde son propre fond.
+let navPillPlaced = false;
+
+function placeNavPill(animate) {
+  const nav = document.querySelector('.nav');
+  if (!nav) return;
+  let pill = nav.querySelector('.nav-pill');
+  if (!pill) {
+    pill = document.createElement('span');
+    pill.className = 'nav-pill';
+    pill.setAttribute('aria-hidden', 'true');
+    nav.prepend(pill);
+    navPillPlaced = false;
+  }
+  const btn = nav.querySelector('.nav-btn.active');
+  if (!btn) { pill.style.opacity = '0'; return; }
+  // Position actuelle, animation en cours comprise (touchers rapides).
+  const from = { left: pill.offsetLeft, width: pill.offsetWidth };
+  const to = { left: btn.offsetLeft, width: btn.offsetWidth };
+  pill.style.opacity = '';
+  pill.style.top = btn.offsetTop + 'px';
+  pill.style.height = btn.offsetHeight + 'px';
+  pill.style.left = to.left + 'px';
+  pill.style.width = to.width + 'px';
+  nav.classList.add('has-pill');
+  const moved = from.left !== to.left || from.width !== to.width;
+  const wasPlaced = navPillPlaced;
+  navPillPlaced = true;
+  if (!animate || !wasPlaced || !moved || reducedMotion() || !pill.animate) return;
+
+  pill.getAnimations().forEach(a => a.cancel());
+  const fromR = from.left + from.width;
+  const toR = to.left + to.width;
+  const forward = to.left > from.left;
+  const midL = from.left + (to.left - from.left) * (forward ? 0.3 : 0.8);
+  const midR = fromR + (toR - fromR) * (forward ? 0.8 : 0.3);
+  pill.animate([
+    { left: from.left + 'px', width: from.width + 'px' },
+    { left: midL + 'px', width: (midR - midL) + 'px', offset: 0.45 },
+    { left: to.left + 'px', width: to.width + 'px' },
+  ], { duration: 420, easing: 'cubic-bezier(.3, .7, .2, 1)' });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  placeNavPill(false);
+  // Les polices changent un peu la mise en page une fois chargées.
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => placeNavPill(false));
 });
 
 // ─── Toast ────────────────────────────────────────────────────────
@@ -283,12 +356,14 @@ function renderGameScreen() {
 
   // Round header. La nouvelle manche "se distribue" : seulement quand elle
   // change, pas à chaque retour sur l'écran.
-  if (lastDealtRound !== `${Game.state.id}:${ri}`) {
+  const newRound = lastDealtRound !== `${Game.state.id}:${ri}`;
+  if (newRound) {
     lastDealtRound = `${Game.state.id}:${ri}`;
     replay(document.querySelector('.round-header'), 'deal');
   }
   document.getElementById('round-title').textContent = `Manche ${ri + 1}`;
   document.getElementById('round-sub').textContent = `${r.cards} carte${r.cards > 1 ? 's' : ''}`;
+  renderCardFan(r.cards, newRound);
   document.getElementById('round-badge').textContent = `${ri + 1} / ${total}`;
   document.getElementById('round-progress').style.width = `${(ri / total) * 100}%`;
 
@@ -492,7 +567,7 @@ function validateAnnouncements() {
     return;
   }
   Game.setAnnouncements(announced);
-  renderResultPhase();
+  afterValidation(document.querySelector('#phase-announce .btn-primary'), null, () => renderResultPhase());
 }
 
 let manualResults = new Set();
@@ -615,16 +690,20 @@ function validateResults() {
   const sum = results.reduce((s, v) => s + v, 0);
   if (sum !== r.cards) { showToast(`Total des plis = ${sum}, attendu ${r.cards}`); return; }
 
+  const roundIdx = Game.state.currentRound;
   Game.setResults(results);
   syncCloud();
 
-  if (Game.state.phase === 'finished') {
-    showScreen('scores');
-    renderFinished();
-  } else {
+  afterValidation(document.querySelector('#phase-result .btn-primary'), roundIdx, () => {
+    // En fin de partie aussi on reste sur l'écran de manche : c'est là que le
+    // podium monte, plutôt que de célébrer sur un écran masqué.
     showScreen('game');
-    showToast(`Manche ${Game.state.currentRound} validée ✓`);
-  }
+    // Le récap a déjà montré les points ; sans animation, il ne joue pas et
+    // ce message le remplace.
+    if (Game.state.phase !== 'finished' && reducedMotion()) {
+      showToast(`Manche ${Game.state.currentRound} validée ✓`);
+    }
+  });
 }
 
 let celebratedGame = null;
@@ -633,15 +712,11 @@ function renderFinished() {
   document.getElementById('phase-announce').style.display = 'none';
   document.getElementById('phase-result').style.display = 'none';
   document.getElementById('round-header-area').style.display = 'none';
-  const sorted = Game.getSortedPlayers();
-  const winner = sorted[0];
   document.getElementById('finished-area').style.display = 'block';
-  document.getElementById('winner-name').textContent = winner.name;
-  document.getElementById('winner-pts').textContent = winner.total + ' pts';
-  if (celebratedGame !== Game.state.id) {
-    celebratedGame = Game.state.id;
-    suitBurst();
-  }
+  // Le podium ne monte qu'une fois par partie.
+  const celebrate = celebratedGame !== Game.state.id;
+  celebratedGame = Game.state.id;
+  renderPodium(celebrate);
 }
 
 function confirmEndGame() {
@@ -848,7 +923,7 @@ function renderStandings() {
     const move = mv > 0 ? `<span class="st-move up">▲${mv}</span>`
       : mv < 0 ? `<span class="st-move down">▼${-mv}</span>`
       : '<span class="st-move"></span>';
-    const gap = r.total < leader ? `<span class="st-gap">à ${leader - r.total}</span>` : '<span class="st-gap"></span>';
+    const gap = r.total < leader ? `<span class="st-gap">à <span class="num">${leader - r.total}</span></span>` : '<span class="st-gap"></span>';
     const cls = ['st-row', r.rank === 1 ? 'first' : ''].join(' ');
     return `<li class="${cls}" data-idx="${r.idx}">
       <span class="st-rank">${r.rank}</span>
@@ -856,7 +931,7 @@ function renderStandings() {
       <span class="st-name">${escapeHtml(r.name)}</span>
       ${move}
       ${gap}
-      <span class="st-pts">${r.total}<small> pts</small></span>
+      <span class="st-pts"><span class="num">${r.total}</span><small> pts</small></span>
     </li>`;
   }).join('');
 
@@ -879,10 +954,23 @@ function animateStandings(list, before, moves) {
   const HOLD = 350;      // un temps sur l'ancien ordre avant que ça bouge
   const MOVE = 900;
 
+  const prevTotal = {};
+  const prevRank = {};
+  before.forEach(r => { prevTotal[r.idx] = r.total; prevRank[r.idx] = r.rank; });
+  const prevLeader = before[0].total;
+
   items.forEach((li, k) => {
     const idx = Number(li.dataset.idx);
     const dy = (prevPos[idx] - k) * rowH;
     const mv = moves[idx] || 0;
+    // Points, rang et écart partent tous de la manche précédente : pendant
+    // la pause sur l'ancien ordre, la ligne reste cohérente avec elle-même.
+    const num = li.querySelector('.st-pts .num');
+    countUp(num, prevTotal[idx], Number(num.textContent), MOVE, HOLD);
+    const rank = li.querySelector('.st-rank');
+    countUp(rank, prevRank[idx], Number(rank.textContent), MOVE, HOLD);
+    const gap = li.querySelector('.st-gap .num');
+    if (gap) countUp(gap, Math.max(0, prevLeader - prevTotal[idx]), Number(gap.textContent), MOVE, HOLD);
     if (!dy && !mv) return;
     // Fond opaque le temps du croisement, sinon les textes se superposent.
     li.style.background = surface;
@@ -930,9 +1018,13 @@ function renderStandingsStrip() {
 
   // Positions avant le nouveau rendu, pour faire glisser ce qui a bougé.
   const before = {};
+  const beforePts = {};
   // (un bandeau sur écran masqué n'a pas de position : rien à comparer)
   if (strip.getClientRects().length) {
-    strip.querySelectorAll('.ss-item').forEach(el => { before[el.dataset.idx] = el.getBoundingClientRect().left; });
+    strip.querySelectorAll('.ss-item').forEach(el => {
+      before[el.dataset.idx] = el.getBoundingClientRect().left;
+      beforePts[el.dataset.idx] = Number(el.querySelector('.ss-pts').textContent);
+    });
   }
   const hadPodium = Object.keys(before).length > 0;
 
@@ -952,6 +1044,12 @@ function renderStandingsStrip() {
   strip.style.display = 'grid';
 
   if (!hadPodium || !strip.animate || reducedMotion()) return;
+  const prev = {};
+  if (done >= 2) Game.getStandings(done - 1).forEach(r => { prev[r.idx] = r.total; });
+  top.forEach(r => {
+    const from = beforePts[r.idx] !== undefined ? beforePts[r.idx] : (prev[r.idx] || 0);
+    countUp(strip.querySelector(`.ss-item[data-idx="${r.idx}"] .ss-pts`), from, r.total, 700, 150);
+  });
   strip.querySelectorAll('.ss-item').forEach(el => {
     const was = before[el.dataset.idx];
     if (was === undefined) {
@@ -974,6 +1072,184 @@ function renderStandingsStrip() {
     ], { duration: 750, easing: 'cubic-bezier(.45, 0, .2, 1)' })
       .finished.catch(() => {}).then(() => { el.style.zIndex = ''; });
   });
+}
+
+// ─── Animations de jeu ────────────────────────────────────────────
+// Toutes s'effacent si le téléphone demande de réduire les animations.
+
+// Un nombre qui défile jusqu'à sa nouvelle valeur.
+function countUp(el, from, to, duration, delay = 0) {
+  if (!el) return;
+  if (from === to || reducedMotion()) { el.textContent = to; return; }
+  el.textContent = from;
+  const start = performance.now() + delay;
+  const step = now => {
+    const t = Math.min(1, Math.max(0, (now - start) / duration));
+    const eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = Math.round(from + (to - from) * eased);
+    if (t < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+// Un temps de récompense entre la validation et la suite : le bouton devient
+// une coche et, en fin de manche, les points s'envolent. Un voile transparent
+// bloque les saisies sur l'ancienne manche, et le toucher passe directement
+// à la suite.
+function afterValidation(btn, roundIdx, proceed) {
+  const check = !!btn;
+  const recap = roundIdx !== null;
+  if ((!check && !recap) || reducedMotion()) { proceed(); return; }
+
+  const shield = document.createElement('div');
+  shield.className = 'tap-shield';
+  document.body.appendChild(shield);
+  let timer = null;
+  let finished = false;
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    clearTimeout(timer);
+    shield.remove();
+    if (check) { btn.classList.remove('btn-done'); btn.style.width = ''; }
+    proceed();
+  };
+  shield.addEventListener('pointerdown', finish);
+
+  let total = 0;
+  if (check) {
+    // Le bouton se resserre en rond, puis la coche apparaît (CSS).
+    btn.style.width = btn.offsetWidth + 'px';
+    btn.classList.add('btn-done');
+    void btn.offsetWidth;
+    btn.style.width = btn.offsetHeight + 'px';
+    total = 560;
+  }
+  if (recap) total = Math.max(total, playRoundRecap(roundIdx));
+  timer = setTimeout(finish, total);
+}
+
+// Les points de la manche s'envolent de chaque ligne.
+function playRoundRecap(ri) {
+  const rows = [...document.querySelectorAll('#result-tbody .pick-row')];
+  const n = rows.length;
+  const stagger = n > 1 ? Math.min(80, 320 / (n - 1)) : 0;
+  const FLY = 700;
+  const css = getComputedStyle(document.documentElement);
+  const tint = { up: css.getPropertyValue('--green-soft').trim(), down: css.getPropertyValue('--red-soft').trim() };
+
+  rows.forEach((row, k) => {
+    const pi = Number(row.id.replace('row-res-', ''));
+    const a = Game.state.rounds[ri].announcements[pi];
+    const ok = a.announced === a.got;
+    const delay = k * stagger;
+    const badge = row.querySelector('.pts-cell .badge');
+    if (badge) badge.animate([
+      { transform: 'scale(1)' },
+      { transform: 'scale(1.35)', offset: 0.35 },
+      { transform: 'scale(1)' },
+    ], { duration: 420, delay, easing: 'ease-out' });
+
+    const fly = document.createElement('span');
+    fly.className = 'recap-fly ' + (ok ? 'up' : 'down');
+    fly.textContent = formatPts(Game.state.players[pi].scores[ri]);
+    row.querySelector('.pick-head').appendChild(fly);
+    fly.animate([
+      { transform: 'translateY(4px) scale(0.7)', opacity: 0 },
+      { transform: 'translateY(-8px) scale(1.2)', opacity: 1, offset: 0.3 },
+      { transform: 'translateY(-34px) scale(1)', opacity: 0 },
+    ], { duration: FLY, delay, easing: 'ease-out', fill: 'both' });
+
+    const c = ok ? tint.up : tint.down;
+    row.animate([
+      { boxShadow: `inset 0 0 0 300px ${c}` },
+      { boxShadow: 'inset 0 0 0 300px transparent' },
+    ], { duration: FLY + 200, delay, easing: 'ease-out', fill: 'backwards' });
+  });
+  return (n - 1) * stagger + FLY;
+}
+
+// Les cartes de la manche, en éventail à côté de "5 cartes". Toujours le
+// nombre exact : au-delà de 8, l'éventail se resserre au lieu de s'élargir,
+// dans la place laissée libre à côté du texte.
+function renderCardFan(cards, deal) {
+  let fan = document.getElementById('round-fan');
+  const sub = document.getElementById('round-sub');
+  if (!fan) {
+    fan = document.createElement('span');
+    fan.id = 'round-fan';
+    fan.className = 'card-fan';
+    fan.setAttribute('aria-hidden', 'true');
+    sub.after(fan);
+  }
+  // Place libre : colonne du titre (en-tête moins le badge "5 / 19"), moins
+  // le texte "5 cartes", sa marge et le débord des cartes inclinées.
+  fan.innerHTML = '';
+  fan.style.width = '0px';
+  const top = document.querySelector('.round-top');
+  const badge = document.getElementById('round-badge');
+  const CARD_W = 14;
+  const room = top.clientWidth - badge.offsetWidth - 12 - sub.offsetWidth - 22 - 14;
+  const maxW = Math.max(CARD_W + 24, Math.min(120, room));
+  const n = cards;
+  const step = n > 1 ? Math.min(8, (maxW - CARD_W) / (n - 1)) : 0;
+  const spread = n > 1 ? Math.min(12, 48 / (n - 1)) : 0;
+  const angles = Array.from({ length: n }, (_, i) => (i - (n - 1) / 2) * spread);
+  fan.style.width = (CARD_W + (n - 1) * step) + 'px';
+  fan.innerHTML = angles.map((a, i) => `<i style="left:${(i * step).toFixed(1)}px;transform:rotate(${a.toFixed(1)}deg)"></i>`).join('');
+  if (!deal || reducedMotion() || !fan.animate) return;
+  // Distribuées une à une, depuis la droite, comme par le donneur. Le rythme
+  // s'accélère avec le nombre de cartes : jamais plus d'une seconde.
+  const stagger = Math.min(70, 560 / n);
+  [...fan.children].forEach((card, i) => {
+    card.animate([
+      { transform: `translate(90px, -30px) rotate(${angles[i] + 40}deg)`, opacity: 0 },
+      { opacity: 1, offset: 0.35 },
+      { transform: `rotate(${angles[i]}deg)`, opacity: 1 },
+    ], { duration: 380, delay: 220 + i * stagger, easing: 'cubic-bezier(.2, .8, .2, 1)', fill: 'backwards' });
+  });
+}
+
+// Podium de fin de partie : les marches montent du 3e au 1er, chacun se pose
+// sur la sienne, puis couronne et confettis.
+function renderPodium(animate) {
+  const pod = document.getElementById('podium');
+  const rows = Game.getStandings();
+  const top = rows.slice(0, 3);
+  // Ordre d'un podium : 2e à gauche, 1er au centre, 3e à droite.
+  const slots = top.length === 2 ? [top[1], top[0]] : [top[1], top[0], top[2]];
+  const HEIGHT = { 1: 96, 2: 66, 3: 44 };
+  const T0 = 150, GAP = 330;            // le 3e d'abord, le 1er en dernier
+  const delayOf = r => T0 + (top.length - 1 - top.indexOf(r)) * GAP;
+  const crownAt = delayOf(top[0]) + 650;
+
+  pod.className = 'podium' + (animate && !reducedMotion() ? ' play' : '');
+  pod.innerHTML = `
+    <div class="pd-stage">
+      ${slots.map(r => {
+        const d = delayOf(r);
+        const first = r.rank === 1;
+        return `<div class="pd-col${first ? ' pd-first' : ''}">
+          <div class="pd-player" style="--d:${d + 380}ms">
+            ${first ? `<div class="pd-crown" style="--d:${crownAt}ms">👑</div>` : ''}
+            <div class="avatar pd-av p${r.idx % PLAYER_COLORS}">${escapeHtml(r.name[0].toUpperCase())}</div>
+            <div class="pd-name">${escapeHtml(r.name)}</div>
+            <div class="pd-pts"><span class="num">${r.total}</span> pts</div>
+          </div>
+          <div class="pd-step" style="--h:${HEIGHT[Math.min(r.rank, 3)]}px;--d:${d}ms"><span>${r.rank}</span></div>
+        </div>`;
+      }).join('')}
+    </div>
+    ${rows.length > 3 ? `<ol class="pd-rest" style="--d:${crownAt + 250}ms">${rows.slice(3).map(r => `
+      <li><span class="pd-rank">${r.rank}</span>${avatar(r.name, r.idx, 'sm')}<span class="pd-rname">${escapeHtml(r.name)}</span><span class="pd-rpts">${r.total} pts</span></li>`).join('')}
+    </ol>` : ''}`;
+
+  if (!pod.classList.contains('play')) return;
+  pod.querySelectorAll('.pd-col').forEach((col, k) => {
+    const r = slots[k];
+    countUp(col.querySelector('.pd-pts .num'), 0, r.total, 650, delayOf(r) + 380);
+  });
+  setTimeout(() => { if (celebratedGame === Game.state.id) suitBurst(); }, crownAt);
 }
 
 function renderScores() {

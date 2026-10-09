@@ -27,6 +27,13 @@
   --radius: 18px;
   --radius-sm: 12px;
   --nav-bg: rgba(255, 255, 255, 0.85);
+
+  /* Mouvement : trois durées et deux courbes pour toute l'app. */
+  --ease-out: cubic-bezier(.2, .8, .2, 1);
+  --ease-spring: cubic-bezier(.3, 1.35, .5, 1);
+  --d-fast: .15s;
+  --d-base: .25s;
+  --d-slow: .45s;
   color-scheme: light;
 }
 
@@ -150,7 +157,9 @@ html, body {
   background: transparent;
   color: var(--text3);
   cursor: pointer;
-  transition: background 0.2s, color 0.2s;
+  position: relative;
+  z-index: 1;
+  transition: background 0.2s, color .3s .05s;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -169,7 +178,7 @@ html, body {
 /* SCREENS */
 .screens-wrap { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .screen { display: none; flex: 1; padding: 20px 16px 40px; overflow-y: auto; }
-.screen.active { display: block; animation: fadeUp 0.25s ease; }
+.screen.active { display: block; animation: fadeUp var(--d-base) var(--ease-out); }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
 /* ── SPLIT VIEW (landscape tablet / desktop) ──────────────────────
@@ -305,7 +314,7 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin
   letter-spacing: 0.01em;
   border: none;
   cursor: pointer;
-  transition: transform 0.12s, box-shadow 0.15s, background 0.15s;
+  transition: transform var(--d-fast) var(--ease-out), box-shadow var(--d-fast), background var(--d-fast), filter var(--d-fast);
 }
 .btn:active { transform: scale(0.98); }
 .btn-primary {
@@ -692,7 +701,7 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin
   display: flex;
   flex-direction: column;
   box-shadow: 0 20px 60px rgba(43, 33, 48, 0.3);
-  animation: modalIn 0.22s ease;
+  animation: modalIn var(--d-base) var(--ease-out);
 }
 @keyframes modalIn { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: none; } }
 .modal-head {
@@ -743,7 +752,7 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin
   font-weight: 700;
   line-height: 1.05;
 }
-.round-sub { font-size: 15px; opacity: 0.9; margin-top: 4px; }
+.round-sub { display: inline-block; font-size: 15px; opacity: 0.9; margin-top: 4px; }
 .round-badge {
   background: rgba(255, 255, 255, 0.22);
   border-radius: 99px;
@@ -839,7 +848,7 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin
   color: var(--text2);
   transition: background 0.2s, color 0.2s;
 }
-.last-hint.visible { display: flex; animation: slideDown 0.25s ease; }
+.last-hint.visible { display: flex; animation: slideDown var(--d-base) var(--ease-out); }
 .last-hint strong { color: var(--text); font-weight: 500; }
 .hint-num {
   display: inline-flex;
@@ -856,7 +865,7 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin
   font-size: 18px;
   font-weight: 700;
   box-shadow: var(--shadow-sm);
-  animation: pop 0.3s cubic-bezier(.2, 1.4, .4, 1);
+  animation: pop var(--d-base) var(--ease-spring);
 }
 .last-hint.blocked { background: var(--red-soft); color: var(--red); }
 .last-hint.blocked strong { color: var(--red); }
@@ -936,7 +945,7 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin
 /* WINNER */
 .winner-banner {
   text-align: center;
-  padding: 40px 20px 32px;
+  padding: 22px 20px 32px;
   background: var(--surface);
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);
@@ -951,17 +960,7 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin
   background: radial-gradient(ellipse at 50% 0%, var(--accent-soft) 0%, transparent 70%);
   pointer-events: none;
 }
-.winner-banner .crown { position: relative; font-size: 56px; animation: pop 0.5s cubic-bezier(.2, 1.4, .4, 1); }
 @keyframes pop { from { transform: scale(0.4); opacity: 0; } to { transform: none; opacity: 1; } }
-.winner-name {
-  position: relative;
-  font-family: 'Kreon', serif;
-  font-size: 36px;
-  font-weight: 700;
-  color: var(--accent-dark);
-  margin: 10px 0 2px;
-}
-.winner-pts { font-family: 'Kreon', serif; font-size: 20px; font-weight: 600; color: var(--text2); }
 
 /* TOAST */
 .toast {
@@ -976,7 +975,7 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin
   font-size: 14px;
   font-weight: 500;
   box-shadow: var(--shadow-md);
-  transition: transform 0.3s cubic-bezier(.2, .8, .2, 1);
+  transition: transform var(--d-base) var(--ease-out);
   z-index: 999;
   white-space: nowrap;
 }
@@ -1016,7 +1015,7 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin
   z-index: 400;
   align-items: center;
   gap: 10px;
-  animation: ibSlide 0.35s cubic-bezier(.2, .8, .2, 1);
+  animation: ibSlide var(--d-slow) var(--ease-out);
 }
 body.show-install-banner #install-banner { display: flex; }
 @keyframes ibSlide { from { opacity: 0; transform: translate(-50%, 16px); } to { opacity: 1; transform: translate(-50%, 0); } }
@@ -1128,14 +1127,6 @@ footer {
   60% { opacity: 1; transform: translateY(2px) rotate(0.3deg); }
   100% { transform: none; }
 }
-@keyframes float {
-  0%, 100% { transform: translateY(0) rotate(0); }
-  50% { transform: translateY(-5px) rotate(-3deg); }
-}
-@keyframes bob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
-}
 @keyframes flash {
   0% { background: var(--accent-soft); }
   100% { background: var(--surface); }
@@ -1147,20 +1138,13 @@ footer {
 }
 
 .shake { animation: shake 0.4s ease; }
-.pop { animation: pop 0.3s cubic-bezier(.2, 1.4, .4, 1); }
-.player-row.enter { animation: slideIn 0.3s cubic-bezier(.2, .8, .2, 1); }
-.round-header.deal { animation: deal 0.5s cubic-bezier(.2, .8, .2, 1); }
-.round-header::after { animation: float 6s ease-in-out infinite; }
+.pop { animation: pop var(--d-base) var(--ease-spring); }
+.player-row.enter { animation: slideIn var(--d-base) var(--ease-out); }
+.round-header.deal { animation: deal var(--d-slow) var(--ease-out); }
 
-/* Les quatre couleurs du logo ondulent l'une après l'autre. */
-.brand-suits span { display: inline-block; animation: bob 2.8s ease-in-out infinite; }
-.brand-suits span:nth-child(2) { animation-delay: 0.2s; }
-.brand-suits span:nth-child(3) { animation-delay: 0.4s; }
-.brand-suits span:nth-child(4) { animation-delay: 0.6s; }
 
 .score-table tr.fresh td { animation: flash 1.6s ease-out; }
-.score-table th.col-player.leads .ph-name::before { display: inline-block; animation: pop 0.4s cubic-bezier(.2, 1.4, .4, 1); }
-.btn-primary { transition: transform 0.12s, box-shadow 0.15s, filter 0.15s; }
+.score-table th.col-player.leads .ph-name::before { display: inline-block; animation: pop var(--d-base) var(--ease-spring); }
 .btn-primary:hover { filter: brightness(1.04); }
 
 .confetti {
@@ -1208,8 +1192,13 @@ footer {
   gap: 6px;
   overflow-x: auto;
   scrollbar-width: none;
-  padding: 2px 2px 4px;
-  margin: 0 -2px;
+  /* La rangée défile, donc elle coupe ce qui dépasse : assez de marge
+     intérieure pour les pointillés d'une pastille déduite (2 px d'écart
+     + 2 px de trait), compensée par une marge négative pour ne rien
+     décaler. */
+  padding: 5px 5px 6px;
+  margin: -3px -5px -2px;
+  scroll-padding-inline: 5px;
   scroll-snap-type: x proximity;
 }
 .chips::-webkit-scrollbar { display: none; }
@@ -1227,7 +1216,7 @@ footer {
   font-weight: 600;
   cursor: pointer;
   scroll-snap-align: start;
-  transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.1s;
+  transition: background var(--d-fast), color var(--d-fast), border-color var(--d-fast), transform var(--d-fast) var(--ease-spring);
 }
 .chip:active { transform: scale(0.94); }
 .chip.selected {
@@ -1254,7 +1243,7 @@ footer {
   padding: 2px 8px;
   border-radius: 99px;
 }
-.pick-row.auto .auto-tag { display: inline-block; animation: pop 0.3s cubic-bezier(.2, 1.4, .4, 1); }
+.pick-row.auto .auto-tag { display: inline-block; animation: pop var(--d-base) var(--ease-spring); }
 .pick-row.auto .chip.selected { outline: 2px dashed var(--accent); outline-offset: 2px; }
 
 .results-total {
@@ -1337,3 +1326,147 @@ footer {
 .illu-ring { stroke: var(--accent); stroke-width: 2.5; }
 .illu-icon { stroke: var(--text); stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
 .illu-dot { fill: var(--text); }
+
+/* ── ANIMATIONS DE JEU ──────────────────────────────────────────────
+   Toutes s'effacent si le téléphone demande de réduire les animations. */
+
+/* Bouton Valider : il se resserre en rond et affiche une coche. */
+.btn.btn-done {
+  color: transparent;
+  white-space: nowrap;
+  overflow: hidden;
+  margin-left: auto;
+  margin-right: auto;
+  position: relative;
+  pointer-events: none;
+  transition: width .3s var(--ease-out), color .1s;
+}
+.btn.btn-done::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 16px;
+  height: 8px;
+  border-left: 3px solid #fff;
+  border-bottom: 3px solid #fff;
+  transform: translate(-50%, -70%) rotate(-45deg) scale(0);
+  animation: checkIn .3s .22s var(--ease-spring) forwards;
+}
+@keyframes checkIn { to { transform: translate(-50%, -70%) rotate(-45deg) scale(1); } }
+
+/* Pendant un effet de validation : bloque les saisies, un toucher passe. */
+.tap-shield { position: fixed; inset: 0; z-index: 900; cursor: pointer; }
+
+/* Fin de manche : les points s'envolent de chaque ligne. */
+.pick-head { position: relative; }
+.recap-fly {
+  position: absolute;
+  right: 0;
+  top: -6px;
+  font-family: 'Kreon', serif;
+  font-size: 22px;
+  font-weight: 700;
+  pointer-events: none;
+}
+.recap-fly.up { color: var(--green); }
+.recap-fly.down { color: var(--red); }
+
+/* Éventail des cartes de la manche, à côté de "5 cartes". */
+.card-fan { display: inline-block; position: relative; height: 20px; margin-left: 22px; vertical-align: -4px; }
+.card-fan i {
+  position: absolute;
+  bottom: 0;
+  width: 14px;
+  height: 20px;
+  border-radius: 3px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(80, 20, 10, 0.35);
+  transform-origin: 50% 160%;
+}
+.card-fan i::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: 2px;
+  background: repeating-linear-gradient(45deg, rgba(232, 64, 60, 0.55) 0 1.5px, transparent 1.5px 3.5px);
+}
+
+/* Transition de vue : le bandeau podium et la carte classement portent le
+   même nom, le navigateur fait grandir l'un en l'autre. */
+.standings-strip,
+#standings-card { view-transition-name: podium-board; }
+.nav { view-transition-name: nav; }
+::view-transition-old(root),
+::view-transition-new(root) { animation-duration: .22s; }
+::view-transition-group(podium-board) {
+  animation-duration: .5s;
+  animation-timing-function: cubic-bezier(.2, .8, .2, 1);
+  overflow: clip;
+  border-radius: var(--radius);
+}
+
+/* Podium de fin de partie. */
+.pd-stage { display: flex; align-items: flex-end; justify-content: center; gap: 8px; height: 250px; }
+.pd-col { flex: 1 1 0; max-width: 112px; min-width: 0; display: flex; flex-direction: column; align-items: center; }
+.pd-player { display: flex; flex-direction: column; align-items: center; width: 100%; min-width: 0; padding-bottom: 8px; }
+.pd-av { width: 44px; height: 44px; font-size: 19px; }
+.pd-first .pd-av { width: 58px; height: 58px; font-size: 25px; box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--gold); }
+.pd-crown { font-size: 26px; line-height: 1; margin-bottom: 4px; transform: rotate(-8deg); }
+.pd-name { font-weight: 500; font-size: 14px; margin-top: 6px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pd-pts { font-family: 'Kreon', serif; font-size: 15px; font-weight: 700; color: var(--text2); font-variant-numeric: tabular-nums; }
+.pd-first .pd-pts { color: var(--accent-dark); font-size: 18px; }
+.pd-step {
+  width: 100%;
+  height: var(--h);
+  border-radius: 12px 12px 0 0;
+  background: linear-gradient(180deg, var(--surface3), var(--surface2));
+  display: flex;
+  justify-content: center;
+  padding-top: 8px;
+  font-family: 'Kreon', serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text3);
+  overflow: hidden;
+}
+.pd-first .pd-step { background: var(--accent-grad); color: #fff; }
+.pd-rest { list-style: none; margin: 14px 0 0; padding: 0; text-align: left; }
+.pd-rest li { display: flex; align-items: center; gap: 10px; padding: 7px 4px; border-top: 1px solid var(--border); }
+.pd-rank { width: 18px; text-align: center; font-family: 'Kreon', serif; font-weight: 700; color: var(--text3); }
+.pd-rname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.pd-rpts { font-family: 'Kreon', serif; font-weight: 700; color: var(--text2); }
+.podium.play .pd-step { animation: stepUp .55s var(--d) cubic-bezier(.2, .9, .3, 1.1) both; }
+.podium.play .pd-player { animation: land .5s var(--d) var(--ease-out) both; }
+.podium.play .pd-crown { animation: crownIn .6s var(--d) var(--ease-spring) both; }
+.podium.play .pd-rest { animation: fadeUp .4s var(--d) var(--ease-out) both; }
+@keyframes stepUp { from { height: 0; padding-top: 0; } }
+@keyframes land {
+  from { opacity: 0; transform: translateY(-22px) scale(0.85); }
+  60% { opacity: 1; transform: translateY(3px) scale(1.04); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes crownIn {
+  from { opacity: 0; transform: translateY(-18px) rotate(-30deg) scale(0.3); }
+  to { opacity: 1; transform: rotate(-8deg); }
+}
+
+/* Pastille rouge du menu qui glisse d'un onglet à l'autre. Une fois posée,
+   l'onglet actif perd son fond : c'est elle qui le dessine. */
+.nav-pill {
+  position: absolute;
+  top: 4px;
+  left: 0;
+  width: 0;
+  height: 0;
+  border-radius: 99px;
+  background: var(--accent);
+  box-shadow: 0 2px 8px rgba(239, 90, 70, 0.35);
+  pointer-events: none;
+  z-index: 0;
+}
+.nav.has-pill .nav-btn.active { background: transparent; box-shadow: none; }
+/* Pendant une transition de vue, le menu reste vivant :
+   pas de fondu entre deux images du menu, la pastille glisse en direct. */
+::view-transition-old(nav) { display: none; }
+::view-transition-new(nav) { animation: none; }
