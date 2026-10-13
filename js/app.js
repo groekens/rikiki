@@ -1674,8 +1674,20 @@ async function buildResultImage() {
   ctx.font = '400 30px "DM Sans"';
   ctx.fillText('Compte tes points sur rikiki.nuxo.be', W / 2, H - 90);
   ctx.fillStyle = '#9b909f';
-  ctx.font = '400 24px "DM Sans"';
-  ctx.fillText('Powered by Nuxo', W / 2, H - 50);
+  ctx.font = '500 24px "DM Sans"';
+  try {
+    // "Powered by" suivi du logo Nuxo, centrés ensemble.
+    const nuxo = await loadImage('images/nuxo-logo.svg');
+    const nh = 46, nw = nh * 750 / 177.75, gap = 8;
+    const tw = ctx.measureText('Powered by').width;
+    const x = (W - tw - gap - nw) / 2;
+    ctx.textAlign = 'left';
+    ctx.fillText('Powered by', x, H - 50);
+    ctx.drawImage(nuxo, x + tw + gap, H - 58 - nh / 2, nw, nh);
+    ctx.textAlign = 'center';
+  } catch (e) {
+    ctx.fillText('Powered by Nuxo', W / 2, H - 50);
+  }
 
   return new Promise(resolve => c.toBlob(resolve, 'image/png'));
 }
