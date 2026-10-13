@@ -1664,12 +1664,14 @@ async function buildResultImage() {
   });
 
   // Pied : logo + adresse
-  try {
-    const logo = await loadImage('logo.png');
-    const lw = 300, lh = lw * logo.height / logo.width;
-    ctx.drawImage(logo, (W - lw) / 2, H - 230, lw, lh);
-  } catch (e) { /* noop */ }
   ctx.textAlign = 'center';
+  ctx.font = '700 104px Kreon';
+  const lw = ctx.measureText('Rikiki').width;
+  const lgrad = ctx.createLinearGradient((W - lw) / 2, 0, (W + lw) / 2, 0);
+  lgrad.addColorStop(0, '#f37a43');
+  lgrad.addColorStop(1, '#e8403c');
+  ctx.fillStyle = lgrad;
+  ctx.fillText('Rikiki', W / 2, H - 148);
   ctx.fillStyle = '#5f5367';
   ctx.font = '400 30px "DM Sans"';
   ctx.fillText('Compte tes points sur rikiki.nuxo.be', W / 2, H - 90);

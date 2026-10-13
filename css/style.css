@@ -242,11 +242,45 @@ h3 {
   padding: 18px 0 22px;
 }
 .brand-logo {
-  display: block;
-  width: 180px;
-  height: auto;
-  margin: 0 auto;
+  display: inline-block;
+  font-family: 'Kreon', serif;
+  font-weight: 700;
+  font-size: clamp(46px, 15vw, 64px);
+  line-height: 1;
+  letter-spacing: -1px;
+  background: var(--accent-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
 }
+/* Deux cartes de chaque côté du nom, reprises de l'image de partage. */
+.brand-row { display: flex; align-items: center; justify-content: center; gap: 16px; }
+.brand-fan { position: relative; flex: none; width: 44px; height: 46px; }
+.brand-fan i {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 32px;
+  height: 45px;
+  margin-left: -16px;
+  padding: 4px 0 0 5px;
+  border-radius: 5px;
+  background: #fffdfa;
+  border: 1px solid rgba(43, 33, 48, 0.08);
+  box-shadow: 0 2px 4px rgba(43, 33, 48, 0.08), 0 6px 14px rgba(43, 33, 48, 0.10);
+  font: normal 700 13px/1 'Kreon', serif;
+  color: #2b2130;
+  text-align: left;
+  transform-origin: 50% 150%;
+  transform: rotate(var(--r));
+  animation: fanOpen var(--d-slow) var(--ease-spring) both;
+}
+.brand-fan i.r { color: #e8403c; }
+/* Cartes de droite : index dans le coin droit, en miroir de celles de gauche. */
+.brand-fan i.tr { padding: 4px 5px 0 0; text-align: right; }
+.brand-fan b { display: block; margin-top: 2px; font: 400 11px/1 serif; }
+@keyframes fanOpen { from { transform: rotate(0); opacity: 0; } }
 .brand-tag {
   font-size: 14px;
   color: var(--text2);
