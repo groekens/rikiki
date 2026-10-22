@@ -103,7 +103,7 @@
 :root[data-theme="dark"] :is(.p0, .p1, .p2, .p3, .p4, .p5, .p6, .p7) { --pc-soft: color-mix(in srgb, var(--pc) 22%, transparent); }
 :root[data-theme="dark"] .powered-by img { filter: invert(1) hue-rotate(180deg); }
 
-* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 
 html, body {
   height: 100%;
